@@ -1,4 +1,5 @@
 
+#include "assimp/Importer.hpp"
 
 
 /*******************************************************************
@@ -12,5 +13,6 @@
 
 void Model_Load( const char *filename )
 {
+Assimp::Importer importer;
 
 } /* Model_Load() */

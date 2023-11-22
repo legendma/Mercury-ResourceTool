@@ -71,14 +71,16 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(ProjectDir)..\src\cjson;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)..\..\..\ots\assimp\include;$(ProjectDir)..\src\cjson;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)\..\bin\build\resourcepackager\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)\..\bin\build\resourcepackager\$(Platform)\$(Configuration)\</IntDir>
+    <LibraryPath>$(ProjectDir)..\..\..\ots\assimp\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(ProjectDir)..\src\cjson;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)..\..\..\ots\assimp\include;$(ProjectDir)..\src\cjson;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)\..\bin\build\resourcepackager\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)\..\bin\build\resourcepackager\$(Platform)\$(Configuration)\</IntDir>
+    <LibraryPath>$(ProjectDir)..\..\..\ots\assimp\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -118,7 +120,11 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y "$(ProjectDir)"..\..\..\ots\assimp\lib\x64\assimp-vc143-mt.dll "$(TargetDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -134,16 +140,20 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y "$(ProjectDir)"..\..\..\ots\assimp\lib\x64\assimp-vc143-mt.dll "$(TargetDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\src\cJSON\cjson.c" />
     <ClCompile Include="..\src\main.cpp" />
-    <ClCompile Include="..\src\model.cpp" />
+    <ClCompile Include="..\src\Model.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\cJSON\cjson.h" />
-    <ClInclude Include="..\src\model.hpp" />
+    <ClInclude Include="..\src\Model.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
