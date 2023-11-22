@@ -1,16 +1,19 @@
 /*******************************************************************
 *  ResourcePackager.exe -d [definition filename and path] -o [output binary filename and path] -r [root to input assets]
 *******************************************************************/
+#include <algorithm>
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
-#include <cstdarg>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <io.h>
 
 #include "cjson.h"
-#include "model.hpp"
+#include "AssetFile.hpp"
+#include "Model.hpp"
+#include "Utilities.hpp"
 
 #define MAX_ARGUMENT_LENGTH         ( 500 )
 #define ARGUMENT_INPUT_DEFINITION   "-d"
@@ -50,13 +53,126 @@ typedef struct _ParseDefinitionState
     char               *json_string;
     } ParseDefinitionState;
 
+struct _DefinitionVisitor;
 
 static bool check_file_exists( const char *filename );
 static size_t get_file_char_size( const char *filename );
 static void parse_args( int argc, char **argv, ProgramArguments *arguments );
-static void print_error( const char *str, ... );
 static bool process_args( const ProgramArguments *arguments );
-static bool read_json_string( const char *filename, const size_t sz, char *out );
+static bool read_json_as_string( const char *filename, const size_t sz, char *out );
+static bool visit_all_definition_assets( const cJSON *assets, const char *asset_folder, _DefinitionVisitor *visitor );
+
+typedef struct _DefinitionVisitor
+    {
+    typedef struct _AssetDescriptor
+        {
+        AssetFileAssetKind
+                        kind = ASSET_FILE_ASSET_KIND_INVALID;
+        std::string     filename;
+        std::string     stripped_filename;
+        } AssetDescriptor;
+
+
+    /***************************************************************
+    *
+    *   VisitModel()
+    *
+    *   DESCRIPTION:
+    *       Tabulate the model asset in the descriptor JSON.
+    *
+    ***************************************************************/
+
+    virtual void VisitModel( const char *asset_id, const char *filename )
+    {
+    std::string stripped = strip_filename( filename );
+    if( std::find( seen_filenames.begin(), seen_filenames.end(), stripped ) != seen_filenames.end() )
+        {
+        print_warning( "Found duplicate filename (%s).  This time as MODEL.  Ignoring (%s)...", stripped, filename );
+        return;
+        }
+
+    seen_filenames.push_back( stripped );
+
+    AssetFileAssetId id = AssetFile_MakeAssetIdFromName( asset_id, (uint32_t)strlen( asset_id ) );
+    if( asset_map.find( id ) != asset_map.end() )
+        {
+        print_warning( "Found duplicate asset name (%s).  This time as MODEL.  Overwriting with (%s)...", asset_id, filename );
+        }
+
+    AssetDescriptor descriptor = {};
+    descriptor.kind              = ASSET_FILE_ASSET_KIND_MODEL;
+    descriptor.filename          = std::string( filename );
+    descriptor.stripped_filename = stripped;
+
+    asset_map[ id ] = descriptor;
+
+    } /* VisitModel() */
+
+
+    /***************************************************************
+    *
+    *   VisitTexture()
+    *
+    *   DESCRIPTION:
+    *       Tabulate the texture asset in the descriptor JSON.
+    *
+    ***************************************************************/
+
+    virtual void VisitTexture( const char *asset_id, const char *filename )
+    {
+    std::string stripped = strip_filename( filename );
+    if( std::find( seen_filenames.begin(), seen_filenames.end(), stripped ) != seen_filenames.end() )
+        {
+        print_warning( "Found duplicate filename (%s).  This time as TEXTURE.  Ignoring (%s)...", stripped, filename );
+        return;
+        }
+
+    seen_filenames.push_back( stripped );
+
+    AssetFileAssetId id = AssetFile_MakeAssetIdFromName( asset_id, (uint32_t)strlen( asset_id ) );
+    if( asset_map.find( id ) != asset_map.end() )
+        {
+        print_warning( "Found duplicate asset name (%s).  This time as TEXTURE.  Overwriting with (%s)...", asset_id, filename );
+        }
+
+    AssetDescriptor descriptor = {};
+    descriptor.kind              = ASSET_FILE_ASSET_KIND_TEXTURE;
+    descriptor.filename          = std::string( filename );
+    descriptor.stripped_filename = stripped;
+
+    asset_map[ id ] = descriptor;
+
+    } /* VisitTexture() */
+
+
+    /***************************************************************
+    *
+    *   ExtractTextureMap()
+    *
+    *   DESCRIPTION:
+    *       Get the texture mapping from filename to asset ID.
+    *
+    ***************************************************************/
+
+    void ExtractTextureMap( std::unordered_map<std::string, AssetFileAssetId> *out )
+    {
+    out->clear();
+    for( auto &entry : asset_map )
+        {
+        if( entry.second.kind == ASSET_FILE_ASSET_KIND_TEXTURE )
+            {
+            (*out)[ entry.second.stripped_filename ] = entry.first;
+            }
+        }
+
+    } /* ExtractTextureMap() */
+    
+    std::unordered_map<AssetFileAssetId, AssetDescriptor>
+                        asset_map;
+    std::vector<std::string>
+                        seen_filenames;
+
+    } DefinitionVisitor;
 
 
 /*******************************************************************
@@ -90,24 +206,24 @@ bool has_error = false;
 if( !arguments.definition.is_valid )
     {
     has_error = true;
-    print_error( "No input definition file provided. ( " ARGUMENT_INPUT_DEFINITION " )\n" );
+    print_error( "No input definition file provided. (%s)", ARGUMENT_INPUT_DEFINITION );
     }
 
 if( !arguments.output_binary.is_valid )
     {
     has_error = true;
-    print_error( "No output filename provided. (" ARGUMENT_OUTPUT_BINARY "\n" );
+    print_error( "No output filename provided. (%s)", ARGUMENT_OUTPUT_BINARY );
     }
 
 if( !arguments.assets_folder.is_valid )
     {
     has_error = true;
-    print_error( "No asset root folder name. (" ARGUMENT_ASSET_ROOT "\n" );
+    print_error( "No asset root folder name. (%s)", ARGUMENT_ASSET_ROOT );
     }
 
 if( !has_error )
     {
-    has_error = process_args( &arguments );
+    has_error = !process_args( &arguments );
     }
 
 if( has_error )
@@ -241,28 +357,6 @@ for( int i = 0; i < argc; i++ )
 
 /*******************************************************************
 *
-*   print_error()
-*
-*   DESCRIPTION:
-*       Print an error message.
-*
-*******************************************************************/
-
-static void print_error( const char *str, ... )
-{
-va_list args;
-va_start( args, str );
-
-printf( "ERROR - [ResourcePackager] - " );
-vprintf( str, args );
-
-va_end( args );
-
-} /* read_json_string() */
-
-
-/*******************************************************************
-*
 *   process_args()
 *
 *   DESCRIPTION:
@@ -274,122 +368,103 @@ static bool process_args( const ProgramArguments *arguments )
 {
 if( !check_file_exists( arguments->definition.filename ) )
     {
-    print_error( "Input definition file was provided, but did not exist.\n" );
+    print_error( "Input definition file was provided, but did not exist." );
     return( false );
     }
 
 size_t json_size = get_file_char_size( arguments->definition.filename );
 if( json_size == 0 )
     {
-    print_error( "Input definition file was empty.\n" );
+    print_error( "Input definition file was empty." );
     }
 
 static ParseDefinitionState parse = {};
 parse.json_string = (char*)malloc( json_size );
-read_json_string( arguments->definition.filename, json_size, parse.json_string );
+read_json_as_string( arguments->definition.filename, json_size, parse.json_string );
 
 cJSON *json = cJSON_ParseWithLength( parse.json_string, json_size );
 const char *error = cJSON_GetErrorPtr();
 if( error )
     {
-    print_error( "Parsing error when processing input definition file. (%s)\n", error );
+    print_error( "Parsing error when processing input definition file. (%s)", error );
     return( false );
     }
 
-bool success = true;
-std::vector<std::string> seen_asset_ids;
-const cJSON *models = NULL;
+bool success = false;
+DefinitionVisitor visitor;
+std::vector<AssetFileAssetId> asset_ids;
+AssetFileWriter output_file = {};
+std::unordered_map<std::string, AssetFileAssetId> texture_map;
 const cJSON *assets = cJSON_GetObjectItemCaseSensitive( json, "assets" );
 if( !assets )
     {
-    print_error( "Parsing error.  Unable to find 'assets' node in definition JSON file.\n" );
-    success = false;
+    print_error( "Parsing error.  Unable to find 'assets' node in definition JSON file." );
     goto error_cleanup;
     }
 
-/* Models */
-models = cJSON_GetObjectItemCaseSensitive( assets, "models" );
-if( models )
+visit_all_definition_assets( assets, arguments->assets_folder.foldername, &visitor );
+for( auto &entry : visitor.asset_map )
     {
-    std::string basefolder( arguments->assets_folder.foldername );
-    basefolder.append( "/" );
-    
-    const cJSON *folder_object = cJSON_GetObjectItemCaseSensitive( models, "basefolder" );
-    if( cJSON_IsString( folder_object ) )
+    asset_ids.push_back( entry.first );
+    }
+
+if( asset_ids.empty() )
+    {
+    print_warning( "No assets found in definition.  Quitting..." );
+    success = true;
+    goto error_cleanup;
+    }
+
+std::sort( asset_ids.begin(), asset_ids.end() );
+if( !AssetFile_CreateForWrite( arguments->output_binary.filename, &asset_ids[ 0 ], (uint32_t)asset_ids.size(), &output_file ) )
+    {
+    print_error( "Could not create output file at the path requested." );
+    goto error_cleanup;
+    }
+
+visitor.ExtractTextureMap( &texture_map );
+for( auto &entry : visitor.asset_map )
+    {
+    switch( entry.second.kind )
         {
-        basefolder.append( folder_object->valuestring );
-        basefolder.append( "/" );
-        }
+        case ASSET_FILE_ASSET_KIND_MODEL:
+            if( !Model_Load( entry.first, entry.second.filename.c_str(), &texture_map, &output_file ) )
+                {
+                print_error( "Failed to load model (%s).  Exiting...", entry.second.filename.c_str() );
+                goto error_cleanup;
+                }
+            break;
 
-    const cJSON *model_list = cJSON_GetObjectItemCaseSensitive( models, "list" );
-    const cJSON *model = NULL;
-    cJSON_ArrayForEach( model_list, model )
-        {
-        const cJSON *model_filename = cJSON_GetObjectItemCaseSensitive( model, "filename" );
-        const cJSON *model_asset_id = cJSON_GetObjectItemCaseSensitive( model, "assetid" );
+        case ASSET_FILE_ASSET_KIND_TEXTURE:
+            break;
 
-        if( !model_filename
-         || !cJSON_IsString( model_filename ) )
-            {
-            success = false;
-            print_error( "Could not find filename for model (%s).\n", cJSON_Print( model ) );
-            goto error_cleanup;
-            }
-        else if( !model_asset_id
-              || !cJSON_IsString( model_asset_id ) )
-            {
-            success = false;
-            print_error( "Could not find asset ID for model (%s)\n", cJSON_Print( model ) );
-            goto error_cleanup;
-            }
-
-        std::string asset_id_str( model_asset_id->valuestring );
-        if( asset_id_str.length() < 1 )
-            {
-            success = false;
-            print_error( "Could not find asset ID for model (%s)\n", cJSON_Print( model ) );
-            goto error_cleanup;
-            }
-        else if( std::find( seen_asset_ids.begin(), seen_asset_ids.end(), asset_id_str ) != seen_asset_ids.end() )
-            {
-            success = false;
-            print_error( "Parser Error.  Found duplicate asset ID of %s (%s)\n", asset_id_str.c_str(), cJSON_Print( model ) );
-            goto error_cleanup;
-            }
-        
-        std::string model_filename_str( basefolder );
-        model_filename_str.append( model_filename->valuestring );
-        if( !check_file_exists( model_filename_str.c_str() ) )
-            {
-            success = false;
-            print_error( "Could not model for filename %s (%s)\n", model_filename_str.c_str(), cJSON_Print( model ) );
-            goto error_cleanup;
-            }
-
-        Model_Load( model_filename_str.c_str() );
+        default:
+            print_warning( "Encountered unknown asset kind (%d).  Ignoring...", entry.second.kind );
+            break;
         }
 
     }
 
+success = true;
 
 error_cleanup:
 cJSON_Delete( json );
 
-return( false );
+return( success );
 
 } /* process_args() */
 
 
 /*******************************************************************
 *
-*   read_json_string()
+*   read_json_as_string()
 *
 *   DESCRIPTION:
 *       Read the JSON string into the output character buffer.
 *
 *******************************************************************/
 
-static bool read_json_string( const char *filename, const size_t sz, char *out )
+static bool read_json_as_string( const char *filename, const size_t sz, char *out )
 {
 FILE *fhnd = NULL;
 errno_t err = fopen_s( &fhnd, filename, "r" );
@@ -403,4 +478,114 @@ fclose( fhnd );
 
 return( size_read == sz );
 
-} /* read_json_string() */
+} /* read_json_as_string() */
+
+
+/*******************************************************************
+*
+*   visit_all_definition_assets()
+*
+*   DESCRIPTION:
+*       Visit all the assets in the definition JSON file.
+*
+*******************************************************************/
+
+static bool visit_all_definition_assets( const cJSON *assets, const char *asset_folder, _DefinitionVisitor *visitor )
+{
+/* Models */
+const cJSON *models = cJSON_GetObjectItemCaseSensitive( assets, "models" );
+if( models )
+    {
+    std::string basefolder( asset_folder );
+    basefolder.append( "/" );
+    
+    const cJSON *folder_object = cJSON_GetObjectItemCaseSensitive( models, "basefolder" );
+    if( cJSON_IsString( folder_object ) )
+        {
+        basefolder.append( folder_object->valuestring );
+        basefolder.append( "/" );
+        }
+
+    const cJSON *model_list = cJSON_GetObjectItemCaseSensitive( models, "list" );
+    const cJSON *model = NULL;
+    cJSON_ArrayForEach( model, model_list )
+        {
+        const cJSON *model_filename = cJSON_GetObjectItemCaseSensitive( model, "filename" );
+        const cJSON *model_asset_id = cJSON_GetObjectItemCaseSensitive( model, "assetid" );
+
+        if( !model_filename
+         || !cJSON_IsString( model_filename ) )
+            {
+            print_error( "Could not find filename for model (%s).", cJSON_Print( model ) );
+            return( false );
+            }
+        else if( !model_asset_id
+              || !cJSON_IsString( model_asset_id ) )
+            {
+            print_error( "Could not find asset ID for model (%s)", cJSON_Print( model ) );
+            return( false );
+            }
+      
+        std::string model_filename_str( basefolder );
+        model_filename_str.append( model_filename->valuestring );
+        if( !check_file_exists( model_filename_str.c_str() ) )
+            {
+            print_error( "Could not model for filename %s (%s)", model_filename_str.c_str(), cJSON_Print( model ) );
+            return( false );
+            }
+
+        visitor->VisitModel( model_asset_id->valuestring, model_filename_str.c_str() );
+        }
+
+    }
+
+/* Textures */
+const cJSON *textures = cJSON_GetObjectItemCaseSensitive( assets, "textures" );
+if( textures )
+    {
+    std::string basefolder( asset_folder );
+    basefolder.append( "/" );
+    
+    const cJSON *folder_object = cJSON_GetObjectItemCaseSensitive( textures, "basefolder" );
+    if( cJSON_IsString( folder_object ) )
+        {
+        basefolder.append( folder_object->valuestring );
+        basefolder.append( "/" );
+        }
+
+    const cJSON *texture_list = cJSON_GetObjectItemCaseSensitive( textures, "list" );
+    const cJSON *texture = NULL;
+    cJSON_ArrayForEach( texture, texture_list )
+        {
+        const cJSON *texture_filename = cJSON_GetObjectItemCaseSensitive( texture, "filename" );
+        const cJSON *texture_asset_id = cJSON_GetObjectItemCaseSensitive( texture, "assetid" );
+
+        if( !texture_filename
+         || !cJSON_IsString( texture_filename ) )
+            {
+            print_error( "Could not find filename for texture (%s).", cJSON_Print( texture ) );
+            return( false );
+            }
+        else if( !texture_asset_id
+              || !cJSON_IsString( texture_asset_id ) )
+            {
+            print_error( "Could not find asset ID for texture (%s)", cJSON_Print( texture ) );
+            return( false );
+            }
+      
+        std::string texture_filename_str( basefolder );
+        texture_filename_str.append( texture_filename->valuestring );
+        if( !check_file_exists( texture_filename_str.c_str() ) )
+            {
+            print_error( "Could not texture for filename %s (%s)", texture_filename_str.c_str(), cJSON_Print( texture ) );
+            return( false );
+            }
+
+        visitor->VisitTexture( texture_asset_id->valuestring, texture_filename_str.c_str() );
+        }
+
+    }
+
+return( true );
+
+} /* visit_all_definition_assets() */

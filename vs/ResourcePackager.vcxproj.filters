@@ -5,7 +5,9 @@
     <ClCompile Include="..\src\cJSON\cjson.c">
       <Filter>cjson</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\AssetFile.cpp" />
     <ClCompile Include="..\src\Model.cpp" />
+    <ClCompile Include="..\src\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="cjson">
@@ -16,6 +18,9 @@
     <ClInclude Include="..\src\cJSON\cjson.h">
       <Filter>cjson</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\AssetFile.hpp" />
     <ClInclude Include="..\src\Model.hpp" />
+    <ClInclude Include="..\src\Texture.hpp" />
+    <ClInclude Include="..\src\Utilities.hpp" />
   </ItemGroup>
 </Project>
