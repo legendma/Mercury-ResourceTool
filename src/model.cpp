@@ -5,7 +5,7 @@
 
 #include "AssetFile.hpp"
 #include "Model.hpp"
-#include "Utilities.hpp"
+#include "ResourceUtilities.hpp"
 
 static uint32_t CountNodes( const aiNode *node );
 static bool WriteNodes( const aiNode *node, const std::unordered_map<uint32_t, uint32_t> *mesh_index_to_element_index, const uint32_t max_element_count, uint32_t *element_count, uint32_t *new_element, AssetFileWriter *output );
@@ -182,7 +182,7 @@ if( !WriteNodes( scene->mRootNode, &map_mesh_index_to_element_index, max_element
 stats->nodes_written += node_count;
 size_t write_total_size = AssetFile_GetWriteSize( output ) - write_start_size;
 stats->written_sz += write_total_size;
-print_info( "[MODEL]     %s     mesh: %d, materials: %d, nodes: %d, %d bytes.", strip_filename( filename ).c_str(), (int)stats->meshes_written, (int)stats->materials_written, (int)stats->nodes_written, (int)write_total_size );
+print_info( "[MODEL]     %s     meshes: %d, materials: %d, nodes: %d, %d bytes.", strip_filename( filename ).c_str(), (int)stats->meshes_written, (int)stats->materials_written, (int)stats->nodes_written, (int)write_total_size );
 
 return( true );
 

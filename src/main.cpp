@@ -15,7 +15,7 @@
 #include "AssetFile.hpp"
 #include "Model.hpp"
 #include "Texture.hpp"
-#include "Utilities.hpp"
+#include "ResourceUtilities.hpp"
 
 #define MAX_ARGUMENT_LENGTH         ( 500 )
 #define ARGUMENT_INPUT_DEFINITION   "-d"
