@@ -4,6 +4,16 @@
 #include <cstdio>
 #include <string>
 
+typedef struct _WriteStats
+    {
+    size_t              written_sz;
+    uint32_t            models_written;
+    uint32_t            materials_written;
+    uint32_t            meshes_written;
+    uint32_t            nodes_written;
+    uint32_t            textures_written;
+    } WriteStats;
+
 /*******************************************************************
 *
 *   print_error()
@@ -32,7 +42,7 @@ va_end( args );
 *   print_warning()
 *
 *   DESCRIPTION:
-*       Print an warning message.
+*       Print a warning message.
 *
 *******************************************************************/
 
@@ -48,6 +58,29 @@ printf( "\n" );
 va_end( args );
 
 } /* print_warning() */
+
+
+/*******************************************************************
+*
+*   print_info()
+*
+*   DESCRIPTION:
+*       Print an info message.
+*
+*******************************************************************/
+
+static inline void print_info( const char *str, ... )
+{
+va_list args;
+va_start( args, str );
+
+printf( "[ResourcePackager] - " );
+vprintf( str, args );
+printf( "\n" );
+
+va_end( args );
+
+} /* print_info() */
 
 
 /*******************************************************************

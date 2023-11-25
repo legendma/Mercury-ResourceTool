@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -187,6 +188,9 @@ typedef struct _DefinitionVisitor
 
 int main( int argc, char **argv )
 {
+print_info( "Starting...\n" );
+clock_t start_time = clock();
+
 static ProgramArguments arguments;
 
 if( argc <= 1 )
@@ -231,6 +235,10 @@ if( has_error )
     {
     return( -1 );
     }
+
+clock_t end_time = clock();
+float final_elapsed_time = ( (float)end_time - (float)start_time ) / (float)CLOCKS_PER_SEC;
+print_info( "Finished!  Elapsed time: %.2f seconds.", final_elapsed_time );
 
 return( 0 );
 
@@ -396,6 +404,8 @@ DefinitionVisitor visitor;
 std::vector<AssetFileAssetId> asset_ids;
 AssetFileWriter output_file = {};
 std::unordered_map<std::string, AssetFileAssetId> texture_map;
+WriteStats models_stats = {};
+WriteStats textures_stats = {};
 const cJSON *assets = cJSON_GetObjectItemCaseSensitive( json, "assets" );
 if( !assets )
     {
@@ -422,25 +432,33 @@ if( !AssetFile_CreateForWrite( arguments->output_binary.filename, &asset_ids[ 0 
     print_error( "Could not create output file at the path requested." );
     goto error_cleanup;
     }
-
 visitor.ExtractTextureMap( &texture_map );
 for( auto &entry : visitor.asset_map )
     {
+    WriteStats this_stats = {};
     switch( entry.second.kind )
         {
         case ASSET_FILE_ASSET_KIND_MODEL:
-            if( !Model_Load( entry.first, entry.second.filename.c_str(), &texture_map, &output_file ) )
+            this_stats = {};
+            if( !Model_Load( entry.first, entry.second.filename.c_str(), &texture_map, &this_stats, &output_file ) )
                 {
                 print_error( "Failed to load model (%s).  Exiting...", entry.second.filename.c_str() );
                 goto error_cleanup;
                 }
+
+            models_stats.models_written++;
+            models_stats.written_sz += this_stats.written_sz;
             break;
 
         case ASSET_FILE_ASSET_KIND_TEXTURE:
-            if( !Texture_Load( entry.first, entry.second.filename.c_str(), &output_file ) )
+            this_stats = {};
+            if( !Texture_Load( entry.first, entry.second.filename.c_str(), &this_stats, &output_file ) )
                 {
                 print_error( "Failed to load texture (%s).  Exiting...", entry.second.filename.c_str() );
                 }
+
+            textures_stats.textures_written++;
+            textures_stats.written_sz += this_stats.written_sz;
             break;
 
         default:
@@ -451,6 +469,8 @@ for( auto &entry : visitor.asset_map )
     }
 
 success = true;
+printf( "\n" );
+print_info( "%d Models (%d bytes), %d Textures (%d bytes).", (int)models_stats.models_written, (int)models_stats.written_sz, (int)textures_stats.textures_written, (int)textures_stats.written_sz );
 
 error_cleanup:
 cJSON_Delete( json );

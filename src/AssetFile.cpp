@@ -392,6 +392,22 @@ return( true );
 
 /*******************************************************************
 *
+*   AssetFile_GetWriteSize()
+*
+*   DESCRIPTION:
+*       Get the current file written size.
+*
+*******************************************************************/
+
+size_t AssetFile_GetWriteSize( const AssetFileWriter *output )
+{
+return( (size_t)output->caret );
+
+} /* AssetFile_GetWriteSize() */
+
+
+/*******************************************************************
+*
 *   AssetFile_WriteModelMaterialTextureMaps()
 *
 *   DESCRIPTION:
@@ -554,3 +570,4 @@ while( remain > 0 )
 return( found_it );
 
 } /* JumpToAssetInTable() */
+

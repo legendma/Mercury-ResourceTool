@@ -16,8 +16,10 @@
 *
 *******************************************************************/
 
-bool Texture_Load( const AssetFileAssetId id, const char *filename, AssetFileWriter *output )
+bool Texture_Load( const AssetFileAssetId id, const char *filename, WriteStats *stats, AssetFileWriter *output )
 {
+*stats = {};
+size_t write_start_size = AssetFile_GetWriteSize( output );
 int width = {};
 int height = {};
 int channel_count = {};
@@ -49,6 +51,10 @@ if( !AssetFile_DescribeTexture( (uint32_t)width, (uint32_t)height, output )
     print_error( "Texture_Load could not write texture asset header to binary (%s).", filename );
     return( false );
     }
+
+size_t write_total_size = AssetFile_GetWriteSize( output ) - write_start_size;
+stats->written_sz += write_total_size;
+print_info( "[TEXTURE]   %s     %d bytes.", strip_filename( filename ).c_str(), (int)write_total_size );
 
 return( true );
 

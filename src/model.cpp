@@ -20,9 +20,11 @@ static bool WriteNodes( const aiNode *node, const std::unordered_map<uint32_t, u
 *
 *******************************************************************/
 
-bool Model_Load( const AssetFileAssetId id, const char *filename, const std::unordered_map<std::string, AssetFileAssetId> *texture_map, AssetFileWriter *output )
+bool Model_Load( const AssetFileAssetId id, const char *filename, const std::unordered_map<std::string, AssetFileAssetId> *texture_map, WriteStats *stats, AssetFileWriter *output )
 {
+*stats = {};
 Assimp::Importer importer;
+size_t write_start_size = AssetFile_GetWriteSize( output );
 
 const aiScene *scene = importer.ReadFile( std::string( filename ), aiProcess_Triangulate | aiProcess_ConvertToLeftHanded );
 if( !scene )
@@ -128,6 +130,8 @@ for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 	map_material_index_to_element_index[ (uint32_t)i ] = element_count;
 	element_count++;
 	assert( element_count <= max_element_count );
+
+	stats->materials_written++;
 	}
 
 /* Meshes */
@@ -162,6 +166,8 @@ for( unsigned int i = 0; i < scene->mNumMeshes; i++ )
 	map_mesh_index_to_element_index[ (uint32_t)i ] = element_count;
 	assert( element_count <= max_element_count );
 	element_count++;
+
+	stats->meshes_written++;
 	}
 
 /* Nodes */
@@ -172,6 +178,11 @@ if( !WriteNodes( scene->mRootNode, &map_mesh_index_to_element_index, max_element
 	print_error( "Model_Load failed to write node tree (%s)", filename );
 	return( false );
 	}
+
+stats->nodes_written += node_count;
+size_t write_total_size = AssetFile_GetWriteSize( output ) - write_start_size;
+stats->written_sz += write_total_size;
+print_info( "[MODEL]     %s     mesh: %d, materials: %d, nodes: %d, %d bytes.", strip_filename( filename ).c_str(), (int)stats->meshes_written, (int)stats->materials_written, (int)stats->nodes_written, (int)write_total_size );
 
 return( true );
 
