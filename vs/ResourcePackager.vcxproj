@@ -71,13 +71,13 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(ProjectDir)..\..\..\ots\assimp\include;$(ProjectDir)..\src\cjson;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)..\..\..\ots\stb\include;$(ProjectDir)..\..\..\ots\assimp\include;$(ProjectDir)..\src\cjson;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)\..\bin\build\resourcepackager\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)\..\bin\build\resourcepackager\$(Platform)\$(Configuration)\</IntDir>
     <LibraryPath>$(ProjectDir)..\..\..\ots\assimp\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(ProjectDir)..\..\..\ots\assimp\include;$(ProjectDir)..\src\cjson;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)..\..\..\ots\stb\include;$(ProjectDir)..\..\..\ots\assimp\include;$(ProjectDir)..\src\cjson;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)\..\bin\build\resourcepackager\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)\..\bin\build\resourcepackager\$(Platform)\$(Configuration)\</IntDir>
     <LibraryPath>$(ProjectDir)..\..\..\ots\assimp\lib\x64;$(LibraryPath)</LibraryPath>
@@ -114,7 +114,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;__STDC_LIB_EXT1__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
@@ -132,7 +132,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;__STDC_LIB_EXT1__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>

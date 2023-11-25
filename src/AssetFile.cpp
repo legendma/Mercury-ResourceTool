@@ -54,6 +54,12 @@ typedef struct _ModelTableRow
     uint32_t            starts_at;  /* file offset to element start */
     } ModelTableRow;
 
+typedef struct _TextureHeader
+    {
+    uint32_t            width;      /* image width                  */
+    uint32_t            height;     /* image height                 */
+    } TextureHeader;
+
 static bool JumpToAssetInTable( const AssetFileAssetId id, AssetFileWriter *output );
 
 
@@ -311,6 +317,36 @@ return( true );
 
 /*******************************************************************
 *
+*   AssetFile_DescribeTexture()
+*
+*   DESCRIPTION:
+*       Provide the dimensions of the texture under write.
+*
+*******************************************************************/
+
+bool AssetFile_DescribeTexture( const uint32_t width, const uint32_t height, AssetFileWriter *output )
+{
+if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE
+ || !output->asset_start
+ || fseek( output->fhnd, output->asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+TextureHeader header = {};
+header.width  = width;
+header.height = height;
+
+assert( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
+output->caret = (uint32_t)ftell( output->fhnd );
+
+return( true );
+
+} /* AssetFile_DescribeTexture() */
+
+
+/*******************************************************************
+*
 *   AssetFile_EndWritingModel()
 *
 *   DESCRIPTION:
@@ -371,7 +407,7 @@ if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
     return( false );
     }
 
-assert( fwrite( asset_ids, sizeof(asset_ids), count, output->fhnd) == count );
+assert( fwrite( asset_ids, sizeof(*asset_ids), count, output->fhnd) == count );
 
 output->caret = (uint32_t)ftell( output->fhnd );
 
@@ -423,13 +459,43 @@ if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
     return( false );
     }
 
-assert( fwrite( asset_ids, sizeof(asset_ids), count, output->fhnd) == count );
+assert( fwrite( asset_ids, sizeof(*asset_ids), count, output->fhnd) == count );
 
 output->caret = (uint32_t)ftell( output->fhnd );
 
 return( true );
 
 } /* AssetFile_WriteModelNodeChildElements() */
+
+
+/*******************************************************************
+*
+*   AssetFile_WriteTexture()
+*
+*   DESCRIPTION:
+*       Write the texture data to the asset binary.  This also ends
+*       the asset writing session.
+*
+*******************************************************************/
+
+bool AssetFile_WriteTexture( const uint8_t *image, const uint32_t image_size, AssetFileWriter *output )
+{
+if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE
+ || !output->asset_start )
+    {
+    return( false );
+    }
+
+assert( fwrite( image, sizeof(*image), image_size, output->fhnd) == image_size );
+
+output->caret = (uint32_t)ftell( output->fhnd );
+
+output->asset_start = 0;
+output->kind = ASSET_FILE_ASSET_KIND_INVALID;
+
+return( true );
+
+} /* AssetFile_WriteTexture() */
 
 
 /*******************************************************************

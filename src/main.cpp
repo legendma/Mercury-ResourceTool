@@ -13,6 +13,7 @@
 #include "cjson.h"
 #include "AssetFile.hpp"
 #include "Model.hpp"
+#include "Texture.hpp"
 #include "Utilities.hpp"
 
 #define MAX_ARGUMENT_LENGTH         ( 500 )
@@ -436,6 +437,10 @@ for( auto &entry : visitor.asset_map )
             break;
 
         case ASSET_FILE_ASSET_KIND_TEXTURE:
+            if( !Texture_Load( entry.first, entry.second.filename.c_str(), &output_file ) )
+                {
+                print_error( "Failed to load texture (%s).  Exiting...", entry.second.filename.c_str() );
+                }
             break;
 
         default:

@@ -53,10 +53,12 @@ bool AssetFile_DescribeModel( const uint32_t node_count, const uint32_t mesh_cou
 bool AssetFile_DescribeModelMaterial( const AssetFileModelMaterialBits maps, AssetFileWriter *output );
 bool AssetFile_DescribeModelMesh( const uint32_t material_element_index, const uint32_t vertex_cnt, AssetFileWriter *output );
 bool AssetFile_DescribeModelNode( const uint32_t node_count, const uint32_t mesh_count, AssetFileWriter *output );
+bool AssetFile_DescribeTexture( const uint32_t width, const uint32_t height, AssetFileWriter *output );
 bool AssetFile_EndWritingModel( const uint32_t root_node_element, AssetFileWriter *output );
 bool AssetFile_WriteModelMaterialTextureMaps( const AssetFileAssetId *asset_ids, const uint8_t count, AssetFileWriter *output );
 bool AssetFile_WriteModelMeshVertex( const AssetFileVertex *vertex, AssetFileWriter *output );
 bool AssetFile_WriteModelNodeChildElements( const AssetFileAssetId *asset_ids, const uint32_t count, AssetFileWriter *output );
+bool AssetFile_WriteTexture( const uint8_t *image, const uint32_t image_size, AssetFileWriter *output );
 
 
 /*******************************************************************
