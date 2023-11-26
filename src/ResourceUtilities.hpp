@@ -11,6 +11,7 @@ typedef struct _WriteStats
     uint32_t            materials_written;
     uint32_t            meshes_written;
     uint32_t            nodes_written;
+    uint32_t            shaders_written;
     uint32_t            textures_written;
     } WriteStats;
 

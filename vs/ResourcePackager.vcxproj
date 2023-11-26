@@ -120,7 +120,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>assimp-vc143-mt.lib;D3DCompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /y "$(ProjectDir)"..\..\..\ots\assimp\lib\x64\assimp-vc143-mt.dll "$(TargetDir)"</Command>
@@ -140,7 +140,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>assimp-vc143-mt.lib;D3DCompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /y "$(ProjectDir)"..\..\..\ots\assimp\lib\x64\assimp-vc143-mt.dll "$(TargetDir)"</Command>
@@ -151,12 +151,14 @@
     <ClCompile Include="..\src\cJSON\cjson.c" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\Model.cpp" />
+    <ClCompile Include="..\src\Shader.cpp" />
     <ClCompile Include="..\src\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\AssetFile.hpp" />
     <ClInclude Include="..\src\cJSON\cjson.h" />
     <ClInclude Include="..\src\Model.hpp" />
+    <ClInclude Include="..\src\Shader.hpp" />
     <ClInclude Include="..\src\Texture.hpp" />
     <ClInclude Include="..\src\Utilities.hpp" />
   </ItemGroup>

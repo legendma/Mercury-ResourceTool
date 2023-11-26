@@ -54,6 +54,11 @@ typedef struct _ModelTableRow
     uint32_t            starts_at;  /* file offset to element start */
     } ModelTableRow;
 
+typedef struct _ShaderHeader
+    {
+    uint32_t            byte_size;  /* byte code blob size          */
+    } ShaderHeader;
+
 typedef struct _TextureHeader
     {
     uint32_t            width;      /* image width                  */
@@ -317,6 +322,35 @@ return( true );
 
 /*******************************************************************
 *
+*   AssetFile_DescribeShader()
+*
+*   DESCRIPTION:
+*       Provide the byte code size of the shader under write.
+*
+*******************************************************************/
+
+bool AssetFile_DescribeShader( const uint32_t byte_size, AssetFileWriter *output )
+{
+if( output->kind != ASSET_FILE_ASSET_KIND_SHADER
+ || !output->asset_start
+ || fseek( output->fhnd, output->asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+ShaderHeader header = {};
+header.byte_size = byte_size;
+
+assert( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
+output->caret = (uint32_t)ftell( output->fhnd );
+
+return( true );
+
+} /* AssetFile_DescribeShader() */
+
+
+/*******************************************************************
+*
 *   AssetFile_DescribeTexture()
 *
 *   DESCRIPTION:
@@ -408,6 +442,46 @@ return( (size_t)output->caret );
 
 /*******************************************************************
 *
+*   AssetFile_OpenForRead()
+*
+*   DESCRIPTION:
+*       Open the asset file for read-only.
+*
+*******************************************************************/
+
+bool AssetFile_OpenForRead( const char *filename, AssetFileReader *input )
+{
+*input = {};
+errno_t err = fopen_s( &input->fhnd, filename, "r" );
+if( err )
+    {
+    return( false );
+    }
+
+AssetFileHeader file_header = {};
+if( fread( &file_header, 1, sizeof(file_header), input->fhnd ) != sizeof(file_header) )
+    {
+    assert( fclose( input->fhnd ) == 0 );
+    input->fhnd = 0;
+    return( false );
+    }
+
+if( file_header.magic != ASSET_FILE_MAGIC )
+    {
+    assert( fclose( input->fhnd ) == 0 );
+    input->fhnd = 0;
+    return( false );
+    }
+
+input->table_cnt = file_header.table_cnt;
+
+return( true );
+
+} /* AssetFile_OpenForRead() */
+
+
+/*******************************************************************
+*
 *   AssetFile_WriteModelMaterialTextureMaps()
 *
 *   DESCRIPTION:
@@ -482,6 +556,36 @@ output->caret = (uint32_t)ftell( output->fhnd );
 return( true );
 
 } /* AssetFile_WriteModelNodeChildElements() */
+
+
+/*******************************************************************
+*
+*   AssetFile_WriteShader()
+*
+*   DESCRIPTION:
+*       Write the shader program blob to the asset binary.  This
+*       also ends the asset writing session.
+*
+*******************************************************************/
+
+bool AssetFile_WriteShader( const uint8_t *blob, const uint32_t blob_size, AssetFileWriter *output )
+{
+if( output->kind != ASSET_FILE_ASSET_KIND_SHADER
+ || !output->asset_start )
+    {
+    return( false );
+    }
+
+assert( fwrite( blob, sizeof(*blob), blob_size, output->fhnd ) == blob_size );
+
+output->caret = (uint32_t)ftell( output->fhnd );
+
+output->asset_start = 0;
+output->kind = ASSET_FILE_ASSET_KIND_INVALID;
+
+return( true );
+
+} /* AssetFile_WriteShader() */
 
 
 /*******************************************************************
