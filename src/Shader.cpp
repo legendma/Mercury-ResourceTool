@@ -29,7 +29,7 @@ if( !wide_string )
     return( false );
     }
 
-assert( (size_t)::MultiByteToWideChar( CP_UTF8, 0, filename, -1, wide_string, wide_size ) == wide_size );
+ensure( (size_t)::MultiByteToWideChar( CP_UTF8, 0, filename, -1, wide_string, wide_size ) == wide_size );
 
 ID3DBlob *byte_code;
 ID3DBlob *error_info;

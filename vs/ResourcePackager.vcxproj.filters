@@ -22,7 +22,7 @@
     <ClInclude Include="..\src\AssetFile.hpp" />
     <ClInclude Include="..\src\Model.hpp" />
     <ClInclude Include="..\src\Texture.hpp" />
-    <ClInclude Include="..\src\Utilities.hpp" />
     <ClInclude Include="..\src\Shader.hpp" />
+    <ClInclude Include="..\src\ResourceUtilities.hpp" />
   </ItemGroup>
 </Project>

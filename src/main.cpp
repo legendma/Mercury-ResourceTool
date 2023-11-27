@@ -522,9 +522,9 @@ for( auto &entry : visitor.asset_map )
 
     }
 
-success = true;
+success = AssetFile_CloseForWrite( &output_file );
 printf( "\n" );
-print_info( "%d Models (%d bytes), %d Shaders (%d bytes), %d Textures (%d bytes).", (int)models_stats.models_written, (int)shaders_stats.shaders_written, (int)shaders_stats.written_sz, (int)textures_stats.textures_written, (int)textures_stats.written_sz );
+print_info( "%d Models (%d bytes), %d Shaders (%d bytes), %d Textures (%d bytes).", (int)models_stats.models_written, (int)models_stats.written_sz, (int)shaders_stats.shaders_written, (int)shaders_stats.written_sz, (int)textures_stats.textures_written, (int)textures_stats.written_sz );
 
 error_cleanup:
 cJSON_Delete( json );

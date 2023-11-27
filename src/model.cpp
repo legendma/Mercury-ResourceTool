@@ -139,8 +139,15 @@ std::unordered_map<uint32_t, uint32_t> map_mesh_index_to_element_index;
 for( unsigned int i = 0; i < scene->mNumMeshes; i++ )
 	{
 	aiMesh *mesh = scene->mMeshes[ i ];
+
+	uint32_t index_count = 0;
+	for( unsigned int j = 0; j < mesh->mNumFaces; j++ )
+		{
+		index_count += (uint32_t)mesh->mFaces[ j ].mNumIndices;
+		}
+
 	if( !AssetFile_BeginWritingModelElement( ASSET_FILE_MODEL_ELEMENT_KIND_MESH, element_count, output )
-	 || !AssetFile_DescribeModelMesh( map_material_index_to_element_index[ mesh->mMaterialIndex ], (uint32_t)mesh->mNumVertices, output ) )
+	 || !AssetFile_DescribeModelMesh( map_material_index_to_element_index[ mesh->mMaterialIndex ], (uint32_t)mesh->mNumVertices, index_count, output ) )
 		{
 		print_error( "Model_Load() could not start writing new model mesh element (%s).", filename );
 		return( false );
@@ -149,7 +156,7 @@ for( unsigned int i = 0; i < scene->mNumMeshes; i++ )
 	/* Vertices */
 	for( unsigned int j = 0; j < mesh->mNumVertices; j++ )
 		{
-		AssetFileVertex v = {};
+		AssetFileModelVertex v = {};
 		v.x = mesh->mVertices[ j ].x;
 		v.y = mesh->mVertices[ j ].y;
 		v.z = mesh->mVertices[ j ].z;
@@ -161,6 +168,16 @@ for( unsigned int i = 0; i < scene->mNumMeshes; i++ )
 			}
 
 		AssetFile_WriteModelMeshVertex( &v, output );
+		}
+
+	/* Indices */
+	for( unsigned int j = 0; j < mesh->mNumFaces; j++ )
+		{
+		aiFace *face = &mesh->mFaces[ j ];
+		for( unsigned int k = 0; k < face->mNumIndices; k++ )
+			{
+			AssetFile_WriteModelMeshIndex( (AssetFileModelIndex)face->mIndices[ k ], output );
+			}
 		}
 
 	map_mesh_index_to_element_index[ (uint32_t)i ] = element_count;

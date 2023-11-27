@@ -28,14 +28,16 @@ enum
     ASSET_FILE_MODEL_MATERIAL_BIT_SPECULAR_MAP_COUNT = 2
     };
 
-typedef struct _AssetFileVertex
+typedef struct _AssetFileModelVertex
     {
     float               x;          /* vertex position              */
     float               y;          /* vertex position              */
     float               z;          /* vertex position              */
     float               u0;         /* first texture coordinate     */
     float               v0;         /* first texture coordinate     */
-    } AssetFileVertex;
+    } AssetFileModelVertex;
+
+typedef uint16_t AssetFileModelIndex;
 
 typedef struct _AssetFileWriter
     {
@@ -44,29 +46,40 @@ typedef struct _AssetFileWriter
     uint32_t            table_cnt;  /* number entries in table      */
     AssetFileAssetKind  kind;       /* asset kind under write       */
     uint32_t            asset_start;/* start of asset under write   */
+    uint32_t            model_vertices_written;
+    uint32_t            model_indices_written;
     } AssetFileWriter;
 
 typedef struct _AssetFileReader
     {
     FILE               *fhnd;       /* file handle                  */
+    uint32_t            caret;      /* working read location        */
+    AssetFileAssetKind  kind;       /* asset kind under read        */
+    uint32_t            asset_start;/* start of asset under read    */
     uint32_t            table_cnt;  /* number entries in table      */
     } AssetFileReader;
 
 
+bool   AssetFile_BeginReadingAsset( const AssetFileAssetId id, const AssetFileAssetKind kind, AssetFileReader *input );
 bool   AssetFile_BeginWritingAsset( const AssetFileAssetId id, const AssetFileAssetKind kind, AssetFileWriter *output );
 bool   AssetFile_BeginWritingModelElement( const AssetFileModelElementKind kind, const uint32_t element_index, AssetFileWriter *output );
+bool   AssetFile_CloseForRead( AssetFileReader *input );
+bool   AssetFile_CloseForWrite( AssetFileWriter *output );
 bool   AssetFile_CreateForWrite( const char *filename, const AssetFileAssetId *ids, const uint32_t ids_count, AssetFileWriter *output );
 bool   AssetFile_DescribeModel( const uint32_t node_count, const uint32_t mesh_count, const uint32_t material_count, AssetFileWriter *output );
 bool   AssetFile_DescribeModelMaterial( const AssetFileModelMaterialBits maps, AssetFileWriter *output );
-bool   AssetFile_DescribeModelMesh( const uint32_t material_element_index, const uint32_t vertex_cnt, AssetFileWriter *output );
+bool   AssetFile_DescribeModelMesh( const uint32_t material_element_index, const uint32_t vertex_cnt, const uint32_t index_cnt, AssetFileWriter *output );
 bool   AssetFile_DescribeModelNode( const uint32_t node_count, const uint32_t mesh_count, AssetFileWriter *output );
 bool   AssetFile_DescribeShader( const uint32_t byte_size, AssetFileWriter *output );
 bool   AssetFile_DescribeTexture( const uint32_t width, const uint32_t height, AssetFileWriter *output );
+bool   AssetFile_EndReadingModel( AssetFileReader *input );
 bool   AssetFile_EndWritingModel( const uint32_t root_node_element, AssetFileWriter *output );
 size_t AssetFile_GetWriteSize( const AssetFileWriter *output );
 bool   AssetFile_OpenForRead( const char *filename, AssetFileReader *input );
+bool   AssetFile_ReadModelStorageRequirements( uint32_t *vertex_count, uint32_t *index_count, uint32_t *mesh_count, uint32_t *node_count, AssetFileReader *input );
 bool   AssetFile_WriteModelMaterialTextureMaps( const AssetFileAssetId *asset_ids, const uint8_t count, AssetFileWriter *output );
-bool   AssetFile_WriteModelMeshVertex( const AssetFileVertex *vertex, AssetFileWriter *output );
+bool   AssetFile_WriteModelMeshIndex( const AssetFileModelIndex index, AssetFileWriter *output );
+bool   AssetFile_WriteModelMeshVertex( const AssetFileModelVertex *vertex, AssetFileWriter *output );
 bool   AssetFile_WriteModelNodeChildElements( const AssetFileAssetId *asset_ids, const uint32_t count, AssetFileWriter *output );
 bool   AssetFile_WriteShader( const uint8_t *blob, const uint32_t blob_size, AssetFileWriter *output );
 bool   AssetFile_WriteTexture( const uint8_t *image, const uint32_t image_size, AssetFileWriter *output );

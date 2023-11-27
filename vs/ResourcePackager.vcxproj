@@ -158,9 +158,9 @@
     <ClInclude Include="..\src\AssetFile.hpp" />
     <ClInclude Include="..\src\cJSON\cjson.h" />
     <ClInclude Include="..\src\Model.hpp" />
+    <ClInclude Include="..\src\ResourceUtilities.hpp" />
     <ClInclude Include="..\src\Shader.hpp" />
     <ClInclude Include="..\src\Texture.hpp" />
-    <ClInclude Include="..\src\Utilities.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

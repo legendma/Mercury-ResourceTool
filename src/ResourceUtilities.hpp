@@ -17,6 +17,23 @@ typedef struct _WriteStats
 
 /*******************************************************************
 *
+*   ensure()
+*
+*   DESCRIPTION:
+*       Evaulate the expression, and if debug-mode also assert.
+*
+*******************************************************************/
+
+#if defined( _DEBUG )
+#define ensure( _expression ) \
+    assert( _expression )
+#else
+#define ensure( _expression ) \
+    (void)( _expression )
+#endif
+
+/*******************************************************************
+*
 *   print_error()
 *
 *   DESCRIPTION:
