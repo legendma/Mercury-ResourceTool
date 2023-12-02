@@ -475,6 +475,7 @@ if( !AssetFile_CreateForWrite( arguments->output_binary.filename, &asset_ids[ 0 
     print_error( "Could not create output file at the path requested." );
     goto error_cleanup;
     }
+
 visitor.ExtractTextureMap( &texture_map );
 for( auto &entry : visitor.asset_map )
     {

@@ -53,7 +53,6 @@ typedef struct _AssetFileWriter
 typedef struct _AssetFileReader
     {
     FILE               *fhnd;       /* file handle                  */
-    uint32_t            caret;      /* working read location        */
     AssetFileAssetKind  kind;       /* asset kind under read        */
     uint32_t            asset_start;/* start of asset under read    */
     uint32_t            table_cnt;  /* number entries in table      */
@@ -76,6 +75,8 @@ bool   AssetFile_EndReadingModel( AssetFileReader *input );
 bool   AssetFile_EndWritingModel( const uint32_t root_node_element, AssetFileWriter *output );
 size_t AssetFile_GetWriteSize( const AssetFileWriter *output );
 bool   AssetFile_OpenForRead( const char *filename, AssetFileReader *input );
+bool   AssetFile_ReadModelMeshIndices( const uint32_t mesh_index, const uint32_t index_capacity, uint32_t *index_count, AssetFileModelIndex *indices, AssetFileReader *input );
+bool   AssetFile_ReadModelMeshVertices( const uint32_t mesh_index, const uint32_t vertex_capacity, uint32_t *vertex_count, AssetFileModelVertex *vertices, AssetFileReader *input );
 bool   AssetFile_ReadModelStorageRequirements( uint32_t *vertex_count, uint32_t *index_count, uint32_t *mesh_count, uint32_t *node_count, AssetFileReader *input );
 bool   AssetFile_WriteModelMaterialTextureMaps( const AssetFileAssetId *asset_ids, const uint8_t count, AssetFileWriter *output );
 bool   AssetFile_WriteModelMeshIndex( const AssetFileModelIndex index, AssetFileWriter *output );

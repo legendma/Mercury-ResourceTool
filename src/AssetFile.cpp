@@ -58,6 +58,8 @@ typedef struct _ModelNodeHeader
 
 typedef struct _ModelTableRow
     {
+    AssetFileModelElementKind
+                        kind;       /* model element kind           */
     uint32_t            starts_at;  /* file offset to element start */
     } ModelTableRow;
 
@@ -73,6 +75,7 @@ typedef struct _TextureHeader
     } TextureHeader;
 
 static bool JumpToAssetInTable( const AssetFileAssetId id, const uint32_t table_count, FILE *file );
+static bool JumpToModelMesh( const uint32_t asset_start, const uint32_t mesh_index, FILE *file );
 
 
 /*******************************************************************
@@ -112,7 +115,6 @@ if( fseek( input->fhnd, row.starts_at, SEEK_SET ) )
     return( false );
     }
 
-input->caret = 0;
 input->asset_start = row.starts_at;
 input->kind = kind;
 
@@ -227,8 +229,9 @@ if( fseek( output->fhnd, row_location, SEEK_SET ) )
     return( false );
     }
 
-AssetFileTableRow row = {};
+ModelTableRow row = {};
 row.starts_at = output->caret;
+row.kind      = kind;
 ensure( fwrite( &row, 1, sizeof(row), output->fhnd ) == sizeof(row) );
 
 if( fseek( output->fhnd, output->caret, SEEK_SET ) )
@@ -490,7 +493,6 @@ if( input->kind != ASSET_FILE_ASSET_KIND_MODEL
     return( false );
     }
 
-input->caret = 0;
 input->asset_start = 0;
 input->kind = ASSET_FILE_ASSET_KIND_INVALID;
 
@@ -602,6 +604,113 @@ input->table_cnt = file_header.table_cnt;
 return( true );
 
 } /* AssetFile_OpenForRead() */
+
+
+/*******************************************************************
+*
+*   AssetFile_ReadModelMeshIndices()
+*
+*   DESCRIPTION:
+*       Read and output the given model mesh's indices.
+*
+*******************************************************************/
+
+bool AssetFile_ReadModelMeshIndices( const uint32_t mesh_index, const uint32_t index_capacity, uint32_t *index_count, AssetFileModelIndex *indices, AssetFileReader *input )
+{
+if( input->kind != ASSET_FILE_ASSET_KIND_MODEL
+ || !input->asset_start
+ || indices == NULL
+ || index_count == NULL )
+    {
+    return( false );
+    }
+
+*index_count = 0;
+
+if( !JumpToModelMesh( input->asset_start, mesh_index, input->fhnd ) )
+    {
+    return( false );
+    }
+
+ModelMeshHeader mesh = {};
+if( fread_s( &mesh, sizeof(mesh), 1, sizeof(mesh), input->fhnd ) != sizeof(mesh) )
+    {
+    return( false );
+    }
+
+if( index_capacity < mesh.index_cnt )
+    {
+    return( false );
+    }
+    
+/* Geometry order is... 
+ a) VERTICES
+ b) INDICES <-- Look here */
+if( fseek( input->fhnd, sizeof(AssetFileModelVertex) * mesh.vertex_cnt, SEEK_CUR ) )
+    {
+    return( false );
+    }
+
+if( fread_s( indices, index_capacity * sizeof(AssetFileModelIndex), sizeof(AssetFileModelIndex), mesh.index_cnt, input->fhnd ) != mesh.index_cnt )
+    {
+    return( false );
+    }
+
+*index_count = mesh.index_cnt;
+return( true );
+
+} /* AssetFile_ReadModelMeshIndices() */
+
+
+/*******************************************************************
+*
+*   AssetFile_ReadModelMeshVertices()
+*
+*   DESCRIPTION:
+*       Read and output the given model mesh's vertices.       
+*
+*******************************************************************/
+
+bool AssetFile_ReadModelMeshVertices( const uint32_t mesh_index, const uint32_t vertex_capacity, uint32_t *vertex_count, AssetFileModelVertex *vertices, AssetFileReader *input )
+{
+if( input->kind != ASSET_FILE_ASSET_KIND_MODEL
+ || !input->asset_start
+ || vertices == NULL
+ || vertex_count == NULL )
+    {
+    return( false );
+    }
+
+*vertex_count = 0;
+
+if( !JumpToModelMesh( input->asset_start, mesh_index, input->fhnd ) )
+    {
+    return( false );
+    }
+
+ModelMeshHeader mesh = {};
+if( fread_s( &mesh, sizeof(mesh), 1, sizeof(mesh), input->fhnd ) != sizeof(mesh) )
+    {
+    return( false );
+    }
+
+if( vertex_capacity < mesh.vertex_cnt )
+    {
+    return( false );
+    }
+    
+/* Geometry order is... 
+ a) VERTICES <-- Look here
+ b) INDICES */
+if( fread_s( vertices, vertex_capacity * sizeof(AssetFileModelVertex), sizeof(AssetFileModelVertex), mesh.vertex_cnt, input->fhnd ) != mesh.vertex_cnt )
+    {
+    return( false );
+    }
+
+*vertex_count = mesh.vertex_cnt;
+return( true );
+
+} /* AssetFile_ReadModelMeshVertices() */
 
 
 /*******************************************************************
@@ -847,7 +956,6 @@ AssetFileTableRow row;
 while( remain > 0 )
     {
     middle = top + remain / 2;
-    remain /= 2;
     
     if( fseek( file, table_start + middle * row_stride, SEEK_SET ) )
         {
@@ -860,7 +968,7 @@ while( remain > 0 )
         return( false );
         }
 
-    if( row.id == id )
+    if( id == row.id )
         {
         found_it = true;
         if( fseek( file, -row_stride, SEEK_CUR ) )
@@ -870,13 +978,74 @@ while( remain > 0 )
 
         break;
         }
-    else if( row.id < id )
+    else if( id > row.id )
         {
         top = middle + 1;
+        remain -= 1 - remain % 2;
         }
+
+    remain /= 2;
     }
 
 return( found_it );
 
 } /* JumpToAssetInTable() */
+
+
+/*******************************************************************
+*
+*   JumpToModelMesh()
+*
+*   DESCRIPTION:
+*       Jump the file caret to the start of the current model's
+*       mesh, given the mesh index.
+*
+*******************************************************************/
+
+static bool JumpToModelMesh( const uint32_t asset_start, const uint32_t mesh_index, FILE *file )
+{
+if( fseek( file, asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+ModelHeader header = {};
+if( fread_s( &header, sizeof(header), 1, sizeof(header), file ) != sizeof(header) )
+    {
+    return( false );
+    }
+
+if( mesh_index >= header.mesh_count )
+    {
+    return( false );
+    }
+
+/* Element table order is...  
+ a) MATERIALS
+ b) MESHES <-- Look here
+ c) NODES */
+uint32_t element_location = asset_start
+                          + (uint32_t)sizeof(ModelHeader)
+                          + ( header.material_cnt + mesh_index ) * (uint32_t)sizeof(ModelTableRow);
+
+if( fseek( file, element_location, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+ModelTableRow element = {};
+if( fread_s( &element, sizeof(element), 1, sizeof(element), file ) != sizeof(element)
+ || element.kind != ASSET_FILE_MODEL_ELEMENT_KIND_MESH )
+    {
+    return( false );
+    }
+
+if( fseek( file, element.starts_at, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+return( true );
+
+} /* JumpToModelMesh() */
 
