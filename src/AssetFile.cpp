@@ -258,7 +258,7 @@ bool AssetFile_CreateForWrite( const char *filename, const AssetFileAssetId *ids
 {
 *output = {};
 
-errno_t err = fopen_s( &output->fhnd, filename, "w+" );
+errno_t err = fopen_s( &output->fhnd, filename, "w+b" );
 if( err )
     {
     return( false );
@@ -478,16 +478,16 @@ return( true );
 
 /*******************************************************************
 *
-*   AssetFile_EndReadingModel()
+*   AssetFile_EndReadingAsset()
 *
 *   DESCRIPTION:
-*       Finish reading a model.
+*       Finish reading an asset.
 *
 *******************************************************************/
 
-bool AssetFile_EndReadingModel( AssetFileReader *input )
+bool AssetFile_EndReadingAsset( AssetFileReader *input )
 {
-if( input->kind != ASSET_FILE_ASSET_KIND_MODEL
+if( input->kind == ASSET_FILE_ASSET_KIND_INVALID
  || !input->asset_start )
     {
     return( false );
@@ -498,7 +498,7 @@ input->kind = ASSET_FILE_ASSET_KIND_INVALID;
 
 return( true );
 
-} /* AssetFile_EndReadingModel() */
+} /* AssetFile_EndReadingAsset() */
 
 
 /*******************************************************************
@@ -578,7 +578,7 @@ return( (size_t)output->caret );
 bool AssetFile_OpenForRead( const char *filename, AssetFileReader *input )
 {
 *input = {};
-errno_t err = fopen_s( &input->fhnd, filename, "r" );
+errno_t err = fopen_s( &input->fhnd, filename, "rb" );
 if( err )
     {
     return( false );
@@ -764,6 +764,87 @@ if( node_count )
 return( true );
 
 } /* AssetFile_ReadModelStorageRequirements() */
+
+
+/*******************************************************************
+*
+*   AssetFile_ReadShaderBinary()
+*
+*   DESCRIPTION:
+*       Read the binary code for the shader under read, and copy it
+*       into the given buffer.
+*
+*******************************************************************/
+
+bool AssetFile_ReadShaderBinary( const uint32_t buffer_sz, uint32_t *read_sz, uint8_t *buffer, AssetFileReader *input )
+{
+if( input->kind != ASSET_FILE_ASSET_KIND_SHADER
+ || !input->asset_start
+ || buffer == NULL )
+    {
+    return( false );
+    }
+
+if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+ShaderHeader header = {};
+if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header)
+ || buffer_sz < header.byte_size )
+    {
+    return( false );
+    }
+    
+if( fread_s( buffer, buffer_sz, 1, header.byte_size, input->fhnd ) != header.byte_size )
+    {
+    return( false );
+    }
+
+if( read_sz != NULL )
+    {
+    *read_sz = header.byte_size;
+    }
+
+return( true );
+
+} /* AssetFile_ReadShaderBinary() */
+
+
+/*******************************************************************
+*
+*   AssetFile_ReadShaderStorageRequirements()
+*
+*   DESCRIPTION:
+*       Read the buffer size required for the shader under read.
+*
+*******************************************************************/
+
+bool AssetFile_ReadShaderStorageRequirements( uint32_t *byte_count, AssetFileReader *input )
+{
+if( input->kind != ASSET_FILE_ASSET_KIND_SHADER
+ || !input->asset_start
+ || byte_count == NULL )
+    {
+    return( false );
+    }
+
+if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+ShaderHeader header = {};
+if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+    {
+    return( false );
+    }
+
+*byte_count = header.byte_size;
+return( true );
+
+} /* AssetFile_ReadShaderStorageRequirements() */
 
 
 /*******************************************************************
