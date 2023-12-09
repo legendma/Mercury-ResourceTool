@@ -56,7 +56,7 @@ for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 	const aiMaterial *material = scene->mMaterials[ i ];
 
 	/* Texture Maps */
-	AssetFileModelMaterialBits maps = 0;
+	AssetFileModelMaterialBits mat_props = 0;
 	AssetFileAssetId diffuse_map_asset_id;
 	AssetFileAssetId specular_map_asset_id;
 
@@ -78,7 +78,7 @@ for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 			}
 		
 		diffuse_map_asset_id = it->second;
-		maps |= ASSET_FILE_MODEL_MATERIAL_BIT_DIFFUSE_MAP;
+		mat_props |= ASSET_FILE_MODEL_MATERIAL_BIT_DIFFUSE_MAP;
 		}
 
 	if( material->GetTextureCount( aiTextureType_SPECULAR ) > 0 )
@@ -99,12 +99,20 @@ for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 			}
 		
 		specular_map_asset_id = it->second;
-		maps |= ASSET_FILE_MODEL_MATERIAL_BIT_SPECULAR_MAP;
+		mat_props |= ASSET_FILE_MODEL_MATERIAL_BIT_SPECULAR_MAP;
+		}
+
+	/* Transparency */
+	ai_real opacity;
+	if( material->Get( AI_MATKEY_OPACITY, opacity )
+     && opacity < 1.0f )
+		{
+		mat_props |= ASSET_FILE_MODEL_MATERIAL_BIT_TRANSPARENCY;
 		}
 
 	/* Write it */
 	if( !AssetFile_BeginWritingModelElement( ASSET_FILE_MODEL_ELEMENT_KIND_MATERIAL, element_count, output )
-	 || !AssetFile_DescribeModelMaterial( maps, output ) )
+	 || !AssetFile_DescribeModelMaterial( mat_props, output ) )
 		{
 		print_error( "Model_Load() could not start writing new model material element (%s).", filename );
 		return( false );
@@ -112,12 +120,12 @@ for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 
 	AssetFileAssetId map_array[ ASSET_FILE_MODEL_MATERIAL_BIT_SPECULAR_MAP_COUNT ];
 	uint8_t map_array_count = 0;
-	if( maps & ASSET_FILE_MODEL_MATERIAL_BIT_DIFFUSE_MAP )
+	if( mat_props & ASSET_FILE_MODEL_MATERIAL_BIT_DIFFUSE_MAP )
 		{
 		map_array[ map_array_count++ ] = diffuse_map_asset_id;
 		}
 
-	if( maps & ASSET_FILE_MODEL_MATERIAL_BIT_SPECULAR_MAP )
+	if( mat_props & ASSET_FILE_MODEL_MATERIAL_BIT_SPECULAR_MAP )
 		{
 		map_array[ map_array_count++ ] = specular_map_asset_id;
 		}
