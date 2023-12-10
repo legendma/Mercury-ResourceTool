@@ -1,6 +1,15 @@
 #pragma once
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
+
+#define ASSET_FILE_MAX_NAME_STR_LEN \
+                        ( 60 )
+
+typedef struct _AssetFileNameString
+    {
+    char                str[ ASSET_FILE_MAX_NAME_STR_LEN + 1 ];
+    } AssetFileNameString;
 
 typedef uint32_t AssetFileAssetId;
 typedef enum _AssetFileAssetKind
@@ -89,8 +98,6 @@ bool   AssetFile_WriteShader( const uint8_t *blob, const uint32_t blob_size, Ass
 bool   AssetFile_WriteTexture( const uint8_t *image, const uint32_t image_size, AssetFileWriter *output );
 
 
-
-
 /*******************************************************************
 *
 *   AssetFile_MakeAssetIdFromName()
@@ -116,3 +123,22 @@ for( uint32_t i = 0; i < name_length; i++ )
 return( ret );
 
 } /* AssetFile_MakeAssetIdFromName() */
+
+
+/*******************************************************************
+*
+*   AssetFile_CopyNameString()
+*
+*   DESCRIPTION:
+*       Copy the given asset name to a string buffer.
+*
+*******************************************************************/
+
+static inline AssetFileNameString AssetFile_CopyNameString( const char *name )
+{
+AssetFileNameString     ret = {};
+strcpy_s( ret.str, sizeof( ret.str ), name );
+
+return( ret );
+
+} /* AssetFile_CopyNameString() */
