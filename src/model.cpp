@@ -58,7 +58,7 @@ for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 	/* Texture Maps */
 	AssetFileModelMaterialBits mat_props = 0;
 	AssetFileAssetId diffuse_map_asset_id;
-	AssetFileAssetId specular_map_asset_id;
+	//AssetFileAssetId specular_map_asset_id;
 
 	if( material->GetTextureCount( aiTextureType_DIFFUSE ) > 0 )
 		{
@@ -81,26 +81,26 @@ for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 		mat_props |= ASSET_FILE_MODEL_MATERIAL_BIT_DIFFUSE_MAP;
 		}
 
-	if( material->GetTextureCount( aiTextureType_SPECULAR ) > 0 )
-		{
-		aiString specular_filename;
-		if( material->Get( AI_MATKEY_TEXTURE( aiTextureType_SPECULAR, 0 ), specular_filename ) != aiReturn_SUCCESS )
-			{
-			print_error( "Model_Load() unable to find specular texture (%s).", specular_filename );
-			return( false );
-			}
+	//if( material->GetTextureCount( aiTextureType_SPECULAR ) > 0 )
+	//	{
+	//	aiString specular_filename;
+	//	if( material->Get( AI_MATKEY_TEXTURE( aiTextureType_SPECULAR, 0 ), specular_filename ) != aiReturn_SUCCESS )
+	//		{
+	//		print_error( "Model_Load() unable to find specular texture (%s).", specular_filename );
+	//		return( false );
+	//		}
 
-		std::string stripped = strip_filename( specular_filename.C_Str() );
-		std::unordered_map<std::string, AssetFileAssetId>::const_iterator it = texture_map->find( stripped );
-		if( it == texture_map->end() )
-			{
-			print_error( "Model_Load() encountered a texture (%s) in model (%s) which was not defined in the definition file.", specular_filename.C_Str(), filename );
-			return( false );
-			}
-		
-		specular_map_asset_id = it->second;
-		mat_props |= ASSET_FILE_MODEL_MATERIAL_BIT_SPECULAR_MAP;
-		}
+	//	std::string stripped = strip_filename( specular_filename.C_Str() );
+	//	std::unordered_map<std::string, AssetFileAssetId>::const_iterator it = texture_map->find( stripped );
+	//	if( it == texture_map->end() )
+	//		{
+	//		print_error( "Model_Load() encountered a texture (%s) in model (%s) which was not defined in the definition file.", specular_filename.C_Str(), filename );
+	//		return( false );
+	//		}
+	//	
+	//	specular_map_asset_id = it->second;
+	//	mat_props |= ASSET_FILE_MODEL_MATERIAL_BIT_SPECULAR_MAP;
+	//	}
 
 	/* Transparency */
 	ai_real opacity;
@@ -118,17 +118,17 @@ for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 		return( false );
 		}
 
-	AssetFileAssetId map_array[ ASSET_FILE_MODEL_MATERIAL_BIT_SPECULAR_MAP_COUNT ];
+	AssetFileAssetId map_array[ASSET_FILE_MODEL_MATERIAL_BIT_COUNT];
 	uint8_t map_array_count = 0;
 	if( mat_props & ASSET_FILE_MODEL_MATERIAL_BIT_DIFFUSE_MAP )
 		{
 		map_array[ map_array_count++ ] = diffuse_map_asset_id;
 		}
 
-	if( mat_props & ASSET_FILE_MODEL_MATERIAL_BIT_SPECULAR_MAP )
-		{
-		map_array[ map_array_count++ ] = specular_map_asset_id;
-		}
+	//if( mat_props & ASSET_FILE_MODEL_MATERIAL_BIT_SPECULAR_MAP )
+	//	{
+	//	map_array[ map_array_count++ ] = specular_map_asset_id;
+	//	}
 
 	if( !AssetFile_WriteModelMaterialTextureMaps( map_array, map_array_count, output ) )
 		{
@@ -250,7 +250,7 @@ static bool WriteNodes( const aiNode *node, const std::unordered_map<uint32_t, u
 {
 #define MAX_CHILDREN                ( 100 )
 
-uint32_t child_element_indices[ MAX_CHILDREN ] = {};
+AssetFileModelIndex child_element_indices[ MAX_CHILDREN ] = {};
 uint32_t child_count = 0;
 
 for( unsigned int i = 0; i < node->mNumChildren; i++ )
@@ -271,8 +271,26 @@ for( unsigned int i = 0; i < (uint32_t)node->mNumMeshes; i++ )
 	assert( child_count <= MAX_CHILDREN );
 	}
 
+float matrix[ 16 ];
+matrix[  0 ] = node->mTransformation.a1;
+matrix[  1 ] = node->mTransformation.a2;
+matrix[  2 ] = node->mTransformation.a3;
+matrix[  3 ] = node->mTransformation.a4;
+matrix[  4 ] = node->mTransformation.b1;
+matrix[  5 ] = node->mTransformation.b2;
+matrix[  6 ] = node->mTransformation.b3;
+matrix[  7 ] = node->mTransformation.b4;
+matrix[  8 ] = node->mTransformation.c1;
+matrix[  9 ] = node->mTransformation.c2;
+matrix[ 10 ] = node->mTransformation.c3;
+matrix[ 11 ] = node->mTransformation.c4;
+matrix[ 12 ] = node->mTransformation.d1;
+matrix[ 13 ] = node->mTransformation.d2;
+matrix[ 14 ] = node->mTransformation.d3;
+matrix[ 15 ] = node->mTransformation.d4;
+
 if( !AssetFile_BeginWritingModelElement( ASSET_FILE_MODEL_ELEMENT_KIND_NODE, *element_count, output )
- || !AssetFile_DescribeModelNode( child_count, (uint32_t)node->mNumMeshes, output ) )
+ || !AssetFile_DescribeModelNode( child_count, matrix, (uint32_t)node->mNumMeshes, output ) )
 	{
 	print_error( "Model_Load() could not start writing new model node element." );
 	return( false );

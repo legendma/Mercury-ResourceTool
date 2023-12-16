@@ -1,5 +1,6 @@
 #include <cassert>
 #include <cstdio>
+#include <cstdlib>
 
 #include "AssetFile.hpp"
 #include "ResourceUtilities.hpp"
@@ -54,6 +55,8 @@ typedef struct _ModelNodeHeader
     {
     uint32_t            node_count; /* number of child nodes        */
     uint32_t            mesh_count; /* number of child meshes       */
+    float               transform[ 16 ];
+                                    /* row major 4x4 matrix         */
     } ModelNodeHeader;
 
 typedef struct _ModelTableRow
@@ -76,6 +79,7 @@ typedef struct _TextureHeader
 
 static bool JumpToAssetInTable( const AssetFileAssetId id, const uint32_t table_count, FILE *file );
 static bool JumpToModelMesh( const uint32_t asset_start, const uint32_t mesh_index, FILE *file );
+static bool JumpToModelNode( const uint32_t asset_start, const uint32_t node_index, FILE *file );
 
 
 /*******************************************************************
@@ -396,10 +400,12 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_DescribeModelNode( const uint32_t node_count, const uint32_t mesh_count, AssetFileWriter *output )
+bool AssetFile_DescribeModelNode( const uint32_t node_count, const float *mat4x4, const uint32_t mesh_count, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
- || !output->asset_start )
+ || !output->asset_start
+ || node_count > ASSET_FILE_MODEL_NODE_CHILD_NODE_MAX_COUNT 
+ || mesh_count > ASSET_FILE_MODEL_NODE_CHILD_MESH_MAX_COUNT )
     {
     return( false );
     }
@@ -407,6 +413,7 @@ if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
 ModelNodeHeader header = {};
 header.node_count = node_count;
 header.mesh_count = mesh_count;
+memcpy( header.transform, mat4x4, _countof( header.transform ) * sizeof( *header.transform ) );
 
 ensure( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
 
@@ -715,6 +722,93 @@ return( true );
 
 /*******************************************************************
 *
+*   AssetFile_ReadModelNodes()
+*
+*   DESCRIPTION:
+*       Read and output the model-under-read's node tree.
+*
+*******************************************************************/
+
+bool AssetFile_ReadModelNodes( const uint32_t node_capacity, uint32_t *node_count, AssetFileModelNode *nodes, AssetFileReader *input )
+{
+if( input->kind != ASSET_FILE_ASSET_KIND_MODEL
+ || !input->asset_start
+ || nodes == NULL )
+    {
+    return( false );
+    }
+
+*node_count = 0;
+
+if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+ModelHeader header = {};
+if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+    {
+    return( false );
+    }
+
+if( header.node_count > node_capacity )
+    {
+    return( false );
+    }
+
+size_t matrix_size = _countof( nodes->transform ) * sizeof( *nodes->transform );
+for( uint32_t i = 0; i < header.node_count; i++ )
+    {
+    nodes[ i ] = {};
+
+    if( !JumpToModelNode( input->asset_start, i, input->fhnd ) )
+        {
+        return( false );
+        }
+
+    ModelNodeHeader node = {};
+    if( fread_s( &node, sizeof( node ), 1, sizeof( node ), input->fhnd ) != sizeof( node ) )
+        {
+        return( false );
+        }
+
+    AssetFileModelIndex element;
+
+    /* transform */
+    memcpy( nodes[ i ].transform, node.transform, _countof( nodes->transform ) * sizeof( *nodes->transform ) );
+
+    /* nodes */
+    for( uint32_t j = 0; i < node.node_count; i++ )
+        {
+        if( fread_s( &element, sizeof(element), 1, sizeof(element), input->fhnd ) != sizeof(element) )
+            {
+            return( false );
+            }
+
+        nodes[ i ].child_nodes[ nodes[ i ].child_node_count++ ] = element;
+        }
+
+    /* meshes */
+    for( uint32_t j = 0; i < node.mesh_count; i++ )
+        {
+        if( fread_s( &element, sizeof(element), 1, sizeof(element), input->fhnd ) != sizeof(element) )
+            {
+            return( false );
+            }
+
+        nodes[ i ].child_meshes[ nodes[ i ].child_mesh_count++ ] = element;
+        }
+    }
+
+*node_count = header.node_count;
+
+return( true );
+
+} /* AssetFile_ReadModelNodes() */
+
+
+/*******************************************************************
+*
 *   AssetFile_ReadModelStorageRequirements()
 *
 *   DESCRIPTION:
@@ -936,7 +1030,7 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_WriteModelNodeChildElements( const AssetFileAssetId *asset_ids, const uint32_t count, AssetFileWriter *output )
+bool AssetFile_WriteModelNodeChildElements( const AssetFileModelIndex *element_ids, const uint32_t count, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start )
@@ -944,7 +1038,7 @@ if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
     return( false );
     }
 
-ensure( fwrite( asset_ids, sizeof(*asset_ids), count, output->fhnd) == count );
+ensure( fwrite( element_ids, sizeof(*element_ids), count, output->fhnd) == count );
 
 output->caret = (uint32_t)ftell( output->fhnd );
 
@@ -1129,4 +1223,57 @@ if( fseek( file, element.starts_at, SEEK_SET ) )
 return( true );
 
 } /* JumpToModelMesh() */
+
+
+/*******************************************************************
+*
+*   JumpToModelNode()
+*
+*   DESCRIPTION:
+*       Jump the file caret to the start of the current model's
+*       node, given the node index.
+*
+*******************************************************************/
+
+static bool JumpToModelNode( const uint32_t asset_start, const uint32_t node_index, FILE *file )
+{
+if( fseek( file, asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+ModelHeader header = {};
+if( fread_s( &header, sizeof(header), 1, sizeof(header), file ) != sizeof(header) )
+    {
+    return( false );
+    }
+
+/* Element table order is...  
+ a) MATERIALS
+ b) MESHES
+ c) NODES  <-- Look here */
+uint32_t element_location = asset_start
+                          + (uint32_t)sizeof(ModelHeader)
+                          + ( header.material_cnt + header.mesh_count + node_index ) * (uint32_t)sizeof(ModelTableRow);
+
+if( fseek( file, element_location, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+ModelTableRow element = {};
+if( fread_s( &element, sizeof(element), 1, sizeof(element), file ) != sizeof(element)
+ || element.kind != ASSET_FILE_MODEL_ELEMENT_KIND_NODE )
+    {
+    return( false );
+    }
+
+if( fseek( file, element.starts_at, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+return( true );
+
+} /* JumpToModelNode() */
 
