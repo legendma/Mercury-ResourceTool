@@ -78,6 +78,7 @@ typedef struct _TextureHeader
     } TextureHeader;
 
 static bool JumpToAssetInTable( const AssetFileAssetId id, const uint32_t table_count, FILE *file );
+static bool JumpToModelMaterial( const uint32_t asset_start, const uint32_t material_index, FILE *file );
 static bool JumpToModelMesh( const uint32_t asset_start, const uint32_t mesh_index, FILE *file );
 static bool JumpToModelNode( const uint32_t asset_start, const uint32_t node_index, FILE *file );
 
@@ -615,6 +616,83 @@ return( true );
 
 /*******************************************************************
 *
+*   AssetFile_ReadModelMaterials()
+*
+*   DESCRIPTION:
+*       Read and output the given model's materials.
+*
+*******************************************************************/
+
+bool AssetFile_ReadModelMaterials( const uint32_t material_capacity, uint32_t *material_count, AssetFileModelMaterial *materials, AssetFileReader *input )
+{
+if( input->kind != ASSET_FILE_ASSET_KIND_MODEL
+ || !input->asset_start
+ || materials == NULL
+ || material_count == NULL )
+    {
+    return( false );
+    }
+
+*material_count = 0;
+
+if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+ModelHeader header = {};
+if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+    {
+    return( false );
+    }
+
+if( header.material_cnt > material_capacity )
+    {
+    return( false );
+    }
+
+for( uint32_t i = 0; i < header.material_cnt; i++ )
+    {
+    materials[ i ] = {};
+
+    if( !JumpToModelMaterial( input->asset_start, i, input->fhnd ) )
+        {
+        return( false );
+        }
+
+    ModelMaterialHeader material = {};
+    if( fread_s( &material, sizeof( material ), 1, sizeof( material ), input->fhnd ) != sizeof( material ) )
+        {
+        return( false );
+        }
+
+    materials[ i ].bits = material.map_bits;
+    for( uint32_t j = 0; j < ASSET_FILE_MODEL_TEXTURES_COUNT; j++ )
+        {
+        if( !( material.map_bits & ( 1 << j ) ) )
+            {
+            continue;
+            }
+
+        AssetFileAssetId element;
+        if( fread_s( &element, sizeof(element), 1, sizeof(element), input->fhnd ) != sizeof(element) )
+            {
+            return( false );
+            }
+
+        materials[ i ].textures[ j ] = element;
+        }
+
+    }
+
+*material_count = header.material_cnt;
+return( true );
+
+} /* AssetFile_ReadModelMaterials() */
+
+
+/*******************************************************************
+*
 *   AssetFile_ReadModelMeshIndices()
 *
 *   DESCRIPTION:
@@ -678,7 +756,7 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadModelMeshVertices( const uint32_t mesh_index, const uint32_t vertex_capacity, uint32_t *vertex_count, AssetFileModelVertex *vertices, AssetFileReader *input )
+bool AssetFile_ReadModelMeshVertices( const uint32_t mesh_index, const uint32_t vertex_capacity, AssetFileModelIndex *material_index, uint32_t *vertex_count, AssetFileModelVertex *vertices, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !input->asset_start
@@ -704,6 +782,11 @@ if( fread_s( &mesh, sizeof(mesh), 1, sizeof(mesh), input->fhnd ) != sizeof(mesh)
 if( vertex_capacity < mesh.vertex_cnt )
     {
     return( false );
+    }
+
+if( material_index )
+    {
+    *material_index = (AssetFileModelIndex)mesh.material;
     }
     
 /* Geometry order is... 
@@ -756,7 +839,6 @@ if( header.node_count > node_capacity )
     return( false );
     }
 
-size_t matrix_size = _countof( nodes->transform ) * sizeof( *nodes->transform );
 for( uint32_t i = 0; i < header.node_count; i++ )
     {
     nodes[ i ] = {};
@@ -816,7 +898,7 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadModelStorageRequirements( uint32_t *vertex_count, uint32_t *index_count, uint32_t *mesh_count, uint32_t *node_count, AssetFileReader *input )
+bool AssetFile_ReadModelStorageRequirements( uint32_t *vertex_count, uint32_t *index_count, uint32_t *mesh_count, uint32_t *node_count, uint32_t *material_count, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !input->asset_start )
@@ -853,6 +935,11 @@ if( mesh_count )
 if( node_count )
     {
     *node_count = header.node_count;
+    }
+
+if( material_count )
+    {
+    *material_count = header.material_cnt;
     }
 
 return( true );
@@ -1165,6 +1252,60 @@ while( remain > 0 )
 return( found_it );
 
 } /* JumpToAssetInTable() */
+
+
+/*******************************************************************
+*
+*   JumpToModelMaterials()
+*
+*   DESCRIPTION:
+*       Jump the file caret to the start of the current model's
+*       material, given the material index.
+*
+*******************************************************************/
+
+static bool JumpToModelMaterial( const uint32_t asset_start, const uint32_t material_index, FILE *file )
+{
+if( fseek( file, asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+ModelHeader header = {};
+if( fread_s( &header, sizeof(header), 1, sizeof(header), file ) != sizeof(header) )
+    {
+    return( false );
+    }
+
+/* Element table order is...  
+ a) MATERIALS <-- Look here
+ b) MESHES
+ c) NODES */
+
+uint32_t element_location = asset_start
+                          + (uint32_t)sizeof(ModelHeader)
+                          + material_index * (uint32_t)sizeof(ModelTableRow);
+
+if( fseek( file, element_location, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+ModelTableRow element = {};
+if( fread_s( &element, sizeof(element), 1, sizeof(element), file ) != sizeof(element)
+ || element.kind != ASSET_FILE_MODEL_ELEMENT_KIND_MATERIAL )
+    {
+    return( false );
+    }
+
+if( fseek( file, element.starts_at, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+return( true );
+
+} /* JumpToModelMaterials() */
 
 
 /*******************************************************************

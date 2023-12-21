@@ -33,11 +33,11 @@ ensure( (size_t)::MultiByteToWideChar( CP_UTF8, 0, filename, -1, wide_string, wi
 
 ID3DBlob *byte_code;
 ID3DBlob *error_info;
-HRESULT hr = D3DCompileFromFile( wide_string, NULL, NULL, entry_point, target, D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &byte_code, &error_info );
+HRESULT hr = D3DCompileFromFile( wide_string, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, entry_point, target, D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &byte_code, &error_info );
 if( error_info )
     {
     print_error( "Shader_Load() failed to compile shader (%s).", filename );
-    OutputDebugStringA( (char*)error_info->GetBufferPointer() );
+    printf( "%s\n", (char *)error_info->GetBufferPointer());
     error_info->Release();
     error_info = NULL;
     }

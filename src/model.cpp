@@ -58,10 +58,10 @@ for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 	/* Texture Maps */
 	AssetFileModelMaterialBits mat_props = 0;
 	AssetFileAssetId diffuse_map_asset_id;
-	//AssetFileAssetId specular_map_asset_id;
 
 	if( material->GetTextureCount( aiTextureType_DIFFUSE ) > 0 )
 		{
+		/* albedo */
 		aiString diffuse_filename;
 		if( material->Get( AI_MATKEY_TEXTURE( aiTextureType_DIFFUSE, 0 ), diffuse_filename ) != aiReturn_SUCCESS )
 			{
@@ -78,29 +78,8 @@ for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 			}
 		
 		diffuse_map_asset_id = it->second;
-		mat_props |= ASSET_FILE_MODEL_MATERIAL_BIT_DIFFUSE_MAP;
+		mat_props |= ASSET_FILE_MODEL_MATERIAL_BIT_ALBEDO_MAP;
 		}
-
-	//if( material->GetTextureCount( aiTextureType_SPECULAR ) > 0 )
-	//	{
-	//	aiString specular_filename;
-	//	if( material->Get( AI_MATKEY_TEXTURE( aiTextureType_SPECULAR, 0 ), specular_filename ) != aiReturn_SUCCESS )
-	//		{
-	//		print_error( "Model_Load() unable to find specular texture (%s).", specular_filename );
-	//		return( false );
-	//		}
-
-	//	std::string stripped = strip_filename( specular_filename.C_Str() );
-	//	std::unordered_map<std::string, AssetFileAssetId>::const_iterator it = texture_map->find( stripped );
-	//	if( it == texture_map->end() )
-	//		{
-	//		print_error( "Model_Load() encountered a texture (%s) in model (%s) which was not defined in the definition file.", specular_filename.C_Str(), filename );
-	//		return( false );
-	//		}
-	//	
-	//	specular_map_asset_id = it->second;
-	//	mat_props |= ASSET_FILE_MODEL_MATERIAL_BIT_SPECULAR_MAP;
-	//	}
 
 	/* Transparency */
 	ai_real opacity;
@@ -118,17 +97,12 @@ for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 		return( false );
 		}
 
-	AssetFileAssetId map_array[ASSET_FILE_MODEL_MATERIAL_BIT_COUNT];
+	AssetFileAssetId map_array[ ASSET_FILE_MODEL_TEXTURES_COUNT ];
 	uint8_t map_array_count = 0;
-	if( mat_props & ASSET_FILE_MODEL_MATERIAL_BIT_DIFFUSE_MAP )
+	if( mat_props & ASSET_FILE_MODEL_MATERIAL_BIT_ALBEDO_MAP )
 		{
 		map_array[ map_array_count++ ] = diffuse_map_asset_id;
 		}
-
-	//if( mat_props & ASSET_FILE_MODEL_MATERIAL_BIT_SPECULAR_MAP )
-	//	{
-	//	map_array[ map_array_count++ ] = specular_map_asset_id;
-	//	}
 
 	if( !AssetFile_WriteModelMaterialTextureMaps( map_array, map_array_count, output ) )
 		{

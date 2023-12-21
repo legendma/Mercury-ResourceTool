@@ -89,10 +89,10 @@ va_end( args );
 
 static inline void print_info( const char *str, ... )
 {
+printf( "[ResourcePackager] - " );
 va_list args;
 va_start( args, str );
 
-printf( "[ResourcePackager] - " );
 vprintf( str, args );
 printf( "\n" );
 

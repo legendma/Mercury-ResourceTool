@@ -3,8 +3,14 @@
 #include <cstdio>
 #include <cstring>
 
-#define ASSET_FILE_MAX_NAME_STR_LEN \
-                        ( 60 )
+#define ASSET_FILE_MAX_NAME_STR_LEN ( 60 )
+
+#define ASSET_FILE_MODEL_VERTEX_UV_COUNT \
+                                    ( 1 )
+#define ASSET_FILE_MODEL_NODE_CHILD_MESH_MAX_COUNT \
+                                    ( 10 )
+#define ASSET_FILE_MODEL_NODE_CHILD_NODE_MAX_COUNT \
+                                    ( 10 )
 
 typedef struct _AssetFileNameString
     {
@@ -28,21 +34,29 @@ typedef enum _AssetFileModelElementKind
     ASSET_FILE_MODEL_ELEMENT_KIND_MATERIAL
     } AssetFileModelElementKind;
 
+typedef enum _AssetFileModelTextures
+    {
+    ASSET_FILE_MODEL_TEXTURES_ALBEDO_MAP,            /* t0 */
+    ASSET_FILE_MODEL_TEXTURES_NORMAL_MAP,            /* t1 */
+    ASSET_FILE_MODEL_TEXTURES_METALLIC_MAP,          /* t2 */
+    ASSET_FILE_MODEL_TEXTURES_ROUGHNESS_MAP,         /* t3 */
+    ASSET_FILE_MODEL_TEXTURES_DISPLACEMENT_MAP,      /* t4 */
+    /* count */
+    ASSET_FILE_MODEL_TEXTURES_COUNT
+    } AssetFileModelTextures;
+
 typedef uint8_t AssetFileModelMaterialBits;
 enum
     {
-    ASSET_FILE_MODEL_MATERIAL_BIT_DIFFUSE_MAP  = ( 1 << 0 ),
-    ASSET_FILE_MODEL_MATERIAL_BIT_TRANSPARENCY = ( 1 << 1 ),
-    /* count */
-    ASSET_FILE_MODEL_MATERIAL_BIT_COUNT = 2
+    /* textures */
+    ASSET_FILE_MODEL_MATERIAL_BIT_ALBEDO_MAP       = ( 1 << ASSET_FILE_MODEL_TEXTURES_ALBEDO_MAP       ),
+    ASSET_FILE_MODEL_MATERIAL_BIT_NORMAL_MAP       = ( 1 << ASSET_FILE_MODEL_TEXTURES_NORMAL_MAP       ),
+    ASSET_FILE_MODEL_MATERIAL_BIT_METALLIC_MAP     = ( 1 << ASSET_FILE_MODEL_TEXTURES_METALLIC_MAP     ),
+    ASSET_FILE_MODEL_MATERIAL_BIT_ROUGHNESS_MAP    = ( 1 << ASSET_FILE_MODEL_TEXTURES_ROUGHNESS_MAP    ),
+    ASSET_FILE_MODEL_MATERIAL_BIT_DISPLACEMENT_MAP = ( 1 << ASSET_FILE_MODEL_TEXTURES_DISPLACEMENT_MAP ),
+    /* markers */
+    ASSET_FILE_MODEL_MATERIAL_BIT_TRANSPARENCY     = ( 1 << ( ASSET_FILE_MODEL_TEXTURES_COUNT + 0 ) )
     };
-
-#define ASSET_FILE_MODEL_VERTEX_UV_COUNT \
-                                    ( 1 )
-#define ASSET_FILE_MODEL_NODE_CHILD_MESH_MAX_COUNT \
-                                    ( 10 )
-#define ASSET_FILE_MODEL_NODE_CHILD_NODE_MAX_COUNT \
-                                    ( 10 )
 
 typedef struct _AssetFileModelVertex
     {
@@ -54,7 +68,7 @@ typedef struct _AssetFileModelVertex
     } AssetFileModelVertex;
 
 typedef uint32_t AssetFileModelIndex; /* used to index vertices/
-                                         meshes/nodes               */
+                                         meshes/nodes/materials     */
 
 typedef struct _AssetFileModelNode
     {
@@ -65,6 +79,14 @@ typedef struct _AssetFileModelNode
     uint16_t            child_mesh_count;
     uint16_t            child_node_count;
     } AssetFileModelNode;
+
+typedef struct _AssetFileModelMaterial
+    {
+    AssetFileModelMaterialBits
+                        bits;       /* valid material parameters    */
+    AssetFileAssetId    textures[ ASSET_FILE_MODEL_TEXTURES_COUNT ];
+                                    /* material texture maps        */
+    } AssetFileModelMaterial;
 
 typedef struct _AssetFileWriter
     {
@@ -102,10 +124,11 @@ bool   AssetFile_EndReadingAsset( AssetFileReader *input );
 bool   AssetFile_EndWritingModel( const uint32_t root_node_element, AssetFileWriter *output );
 size_t AssetFile_GetWriteSize( const AssetFileWriter *output );
 bool   AssetFile_OpenForRead( const char *filename, AssetFileReader *input );
+bool   AssetFile_ReadModelMaterials( const uint32_t material_capacity, uint32_t *material_count, AssetFileModelMaterial *materials, AssetFileReader *input );
 bool   AssetFile_ReadModelMeshIndices( const uint32_t mesh_index, const uint32_t index_capacity, uint32_t *index_count, AssetFileModelIndex *indices, AssetFileReader *input );
-bool   AssetFile_ReadModelMeshVertices( const uint32_t mesh_index, const uint32_t vertex_capacity, uint32_t *vertex_count, AssetFileModelVertex *vertices, AssetFileReader *input );
+bool   AssetFile_ReadModelMeshVertices( const uint32_t mesh_index, const uint32_t vertex_capacity, AssetFileModelIndex *material_index, uint32_t *vertex_count, AssetFileModelVertex *vertices, AssetFileReader *input );
 bool   AssetFile_ReadModelNodes( const uint32_t node_capacity, uint32_t *node_count, AssetFileModelNode *nodes, AssetFileReader *input );
-bool   AssetFile_ReadModelStorageRequirements( uint32_t *vertex_count, uint32_t *index_count, uint32_t *mesh_count, uint32_t *node_count, AssetFileReader *input );
+bool   AssetFile_ReadModelStorageRequirements( uint32_t *vertex_count, uint32_t *index_count, uint32_t *mesh_count, uint32_t *node_count, uint32_t *material_count, AssetFileReader *input );
 bool   AssetFile_ReadShaderBinary( const uint32_t buffer_sz, uint32_t *read_sz, uint8_t *buffer, AssetFileReader *input );
 bool   AssetFile_ReadShaderStorageRequirements( uint32_t *byte_count, AssetFileReader *input );
 bool   AssetFile_WriteModelMaterialTextureMaps( const AssetFileAssetId *asset_ids, const uint8_t count, AssetFileWriter *output );
