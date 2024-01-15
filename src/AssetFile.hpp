@@ -38,9 +38,10 @@ typedef enum _AssetFileModelTextures
     {
     ASSET_FILE_MODEL_TEXTURES_ALBEDO_MAP,            /* t0 */
     ASSET_FILE_MODEL_TEXTURES_NORMAL_MAP,            /* t1 */
-    ASSET_FILE_MODEL_TEXTURES_METALLIC_MAP,          /* t2 */
-    ASSET_FILE_MODEL_TEXTURES_ROUGHNESS_MAP,         /* t3 */
-    ASSET_FILE_MODEL_TEXTURES_DISPLACEMENT_MAP,      /* t4 */
+    ASSET_FILE_MODEL_TEXTURES_EMISSIVE_MAP,          /* t2 */
+    ASSET_FILE_MODEL_TEXTURES_METALLIC_MAP,          /* t3 */
+    ASSET_FILE_MODEL_TEXTURES_ROUGHNESS_MAP,         /* t4 */
+    ASSET_FILE_MODEL_TEXTURES_DISPLACEMENT_MAP,      /* t5 */
     /* count */
     ASSET_FILE_MODEL_TEXTURES_COUNT
     } AssetFileModelTextures;
@@ -51,6 +52,7 @@ enum
     /* textures */
     ASSET_FILE_MODEL_MATERIAL_BIT_ALBEDO_MAP       = ( 1 << ASSET_FILE_MODEL_TEXTURES_ALBEDO_MAP       ),
     ASSET_FILE_MODEL_MATERIAL_BIT_NORMAL_MAP       = ( 1 << ASSET_FILE_MODEL_TEXTURES_NORMAL_MAP       ),
+    ASSET_FILE_MODEL_MATERIAL_BIT_EMISSIVE_MAP     = ( 1 << ASSET_FILE_MODEL_TEXTURES_EMISSIVE_MAP     ),
     ASSET_FILE_MODEL_MATERIAL_BIT_METALLIC_MAP     = ( 1 << ASSET_FILE_MODEL_TEXTURES_METALLIC_MAP     ),
     ASSET_FILE_MODEL_MATERIAL_BIT_ROUGHNESS_MAP    = ( 1 << ASSET_FILE_MODEL_TEXTURES_ROUGHNESS_MAP    ),
     ASSET_FILE_MODEL_MATERIAL_BIT_DISPLACEMENT_MAP = ( 1 << ASSET_FILE_MODEL_TEXTURES_DISPLACEMENT_MAP ),
@@ -119,7 +121,7 @@ bool   AssetFile_DescribeModelMaterial( const AssetFileModelMaterialBits maps, A
 bool   AssetFile_DescribeModelMesh( const uint32_t material_element_index, const uint32_t vertex_cnt, const uint32_t index_cnt, AssetFileWriter *output );
 bool   AssetFile_DescribeModelNode( const uint32_t node_count, const float *mat4x4, const uint32_t mesh_count, AssetFileWriter *output );
 bool   AssetFile_DescribeShader( const uint32_t byte_size, AssetFileWriter *output );
-bool   AssetFile_DescribeTexture( const uint32_t width, const uint32_t height, AssetFileWriter *output );
+bool   AssetFile_DescribeTexture( const uint32_t byte_size, AssetFileWriter *output );
 bool   AssetFile_EndReadingAsset( AssetFileReader *input );
 bool   AssetFile_EndWritingModel( const uint32_t root_node_element, AssetFileWriter *output );
 size_t AssetFile_GetWriteSize( const AssetFileWriter *output );
@@ -131,6 +133,8 @@ bool   AssetFile_ReadModelNodes( const uint32_t node_capacity, uint32_t *node_co
 bool   AssetFile_ReadModelStorageRequirements( uint32_t *vertex_count, uint32_t *index_count, uint32_t *mesh_count, uint32_t *node_count, uint32_t *material_count, AssetFileReader *input );
 bool   AssetFile_ReadShaderBinary( const uint32_t buffer_sz, uint32_t *read_sz, uint8_t *buffer, AssetFileReader *input );
 bool   AssetFile_ReadShaderStorageRequirements( uint32_t *byte_count, AssetFileReader *input );
+bool   AssetFile_ReadTextureBinary( const uint32_t buffer_sz, uint32_t *read_sz, uint8_t *buffer, AssetFileReader *input );
+bool   AssetFile_ReadTextureStorageRequirements( uint32_t *byte_count, AssetFileReader *input );
 bool   AssetFile_WriteModelMaterialTextureMaps( const AssetFileAssetId *asset_ids, const uint8_t count, AssetFileWriter *output );
 bool   AssetFile_WriteModelMeshIndex( const AssetFileModelIndex index, AssetFileWriter *output );
 bool   AssetFile_WriteModelMeshVertex( const AssetFileModelVertex *vertex, AssetFileWriter *output );
@@ -164,6 +168,23 @@ for( uint32_t i = 0; i < name_length; i++ )
 return( ret );
 
 } /* AssetFile_MakeAssetIdFromName() */
+
+
+/*******************************************************************
+*
+*   AssetFile_MakeAssetIdFromNameString()
+*
+*   DESCRIPTION:
+*       Create a 32-bit hash asset id given the string asset id
+*       name string.
+*
+*******************************************************************/
+
+static uint32_t inline AssetFile_MakeAssetIdFromNameString( const AssetFileNameString *name )
+{
+return( AssetFile_MakeAssetIdFromName( name->str, (uint32_t)strlen( name->str ) ) );
+
+} /* AssetFile_MakeAssetIdFromNameString() */
 
 
 /*******************************************************************

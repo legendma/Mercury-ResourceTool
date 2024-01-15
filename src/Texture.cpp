@@ -47,7 +47,7 @@ if( !AssetFile_BeginWritingAsset( id, ASSET_FILE_ASSET_KIND_TEXTURE, output ) )
 	return( false );
 	}
 
-if( !AssetFile_DescribeTexture( (uint32_t)width, (uint32_t)height, output )
+if( !AssetFile_DescribeTexture( written_length, output )
  || !AssetFile_WriteTexture( png, written_length, output ) )
     {
     free( png );

@@ -73,8 +73,7 @@ typedef struct _ShaderHeader
 
 typedef struct _TextureHeader
     {
-    uint32_t            width;      /* image width                  */
-    uint32_t            height;     /* image height                 */
+    uint32_t            byte_size;  /* compressed image blob size   */
     } TextureHeader;
 
 static bool JumpToAssetInTable( const AssetFileAssetId id, const uint32_t table_count, FILE *file );
@@ -88,8 +87,8 @@ static bool JumpToModelNode( const uint32_t asset_start, const uint32_t node_ind
 *   AssetFile_BeginReadingAsset()
 *
 *   DESCRIPTION:
-*       Start writing an asset of the given ID, by updating the
-*       asset table to reflect the current file caret.
+*       Start reading an asset of the given ID, by discovering its
+*       place within the greater asset file.
 *
 *******************************************************************/
 
@@ -463,7 +462,7 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_DescribeTexture( const uint32_t width, const uint32_t height, AssetFileWriter *output )
+bool AssetFile_DescribeTexture( const uint32_t byte_size, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE
  || !output->asset_start
@@ -473,8 +472,7 @@ if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE
     }
 
 TextureHeader header = {};
-header.width  = width;
-header.height = height;
+header.byte_size  = byte_size;
 
 ensure( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
 output->caret = (uint32_t)ftell( output->fhnd );
@@ -1026,6 +1024,87 @@ if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof
 return( true );
 
 } /* AssetFile_ReadShaderStorageRequirements() */
+
+
+/*******************************************************************
+*
+*   AssetFile_ReadTextureBinary()
+*
+*   DESCRIPTION:
+*       Read the binary compressed image data for the texture under
+*       read, and copy it into the given buffer.
+*
+*******************************************************************/
+
+bool AssetFile_ReadTextureBinary( const uint32_t buffer_sz, uint32_t *read_sz, uint8_t *buffer, AssetFileReader *input )
+{
+if( input->kind != ASSET_FILE_ASSET_KIND_TEXTURE
+ || !input->asset_start
+ || buffer == NULL )
+    {
+    return( false );
+    }
+
+if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+TextureHeader header = {};
+if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header)
+ || buffer_sz < header.byte_size )
+    {
+    return( false );
+    }
+    
+if( fread_s( buffer, buffer_sz, 1, header.byte_size, input->fhnd ) != header.byte_size )
+    {
+    return( false );
+    }
+
+if( read_sz != NULL )
+    {
+    *read_sz = header.byte_size;
+    }
+
+return( true );
+
+} /* AssetFile_ReadTextureBinary() */
+
+
+/*******************************************************************
+*
+*   AssetFile_ReadTextureStorageRequirements()
+*
+*   DESCRIPTION:
+*       Read the buffer size required for the texture under read.
+*
+*******************************************************************/
+
+bool AssetFile_ReadTextureStorageRequirements( uint32_t *byte_count, AssetFileReader *input )
+{
+if( input->kind != ASSET_FILE_ASSET_KIND_TEXTURE
+ || !input->asset_start
+ || byte_count == NULL )
+    {
+    return( false );
+    }
+
+if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+TextureHeader header = {};
+if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+    {
+    return( false );
+    }
+
+*byte_count = header.byte_size;
+return( true );
+
+} /* AssetFile_ReadTextureStorageRequirements() */
 
 
 /*******************************************************************
