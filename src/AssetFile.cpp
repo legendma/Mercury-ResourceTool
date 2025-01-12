@@ -73,6 +73,9 @@ typedef struct _ShaderHeader
 
 typedef struct _TextureHeader
     {
+    uint32_t            channel_cnt;/* number of color channels     */
+    uint32_t            width;      /* image width                  */
+    uint32_t            height;     /* image height                 */
     uint32_t            byte_size;  /* compressed image blob size   */
     } TextureHeader;
 
@@ -216,7 +219,7 @@ return( ret );
 *
 *******************************************************************/
 
-bool AssetFile_BeginWritingModelElement( const AssetFileModelElementKind kind, const uint32_t element_index, AssetFileWriter *output )
+bool AssetFile_BeginWritingModelElement( const AssetFileModelElementKind kind, const AssetFileModelIndex element_index, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start )
@@ -480,6 +483,38 @@ output->caret = (uint32_t)ftell( output->fhnd );
 return( true );
 
 } /* AssetFile_DescribeTexture() */
+
+
+/*******************************************************************
+*
+*   AssetFile_DescribeTexture2()
+*
+*   DESCRIPTION:
+*       Provide the dimensions of the texture under write.
+*
+*******************************************************************/
+
+bool AssetFile_DescribeTexture2( const uint32_t channel_cnt, const uint32_t width, const uint32_t height, const uint32_t byte_size, AssetFileWriter *output )
+{
+if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE
+ || !output->asset_start
+ || fseek( output->fhnd, output->asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+TextureHeader header = {};
+header.byte_size   = byte_size;
+header.width       = width;
+header.height      = height;
+header.channel_cnt = channel_cnt;
+
+ensure( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
+output->caret = (uint32_t)ftell( output->fhnd );
+
+return( true );
+
+} /* AssetFile_DescribeTexture2() */
 
 
 /*******************************************************************
@@ -858,25 +893,25 @@ for( uint32_t i = 0; i < header.node_count; i++ )
     memcpy( nodes[ i ].transform, node.transform, _countof( nodes->transform ) * sizeof( *nodes->transform ) );
 
     /* nodes */
-    for( uint32_t j = 0; i < node.node_count; i++ )
+    for( uint32_t j = 0; j < node.node_count; j++ )
         {
         if( fread_s( &element, sizeof(element), 1, sizeof(element), input->fhnd ) != sizeof(element) )
             {
             return( false );
             }
 
-        nodes[ i ].child_nodes[ nodes[ i ].child_node_count++ ] = element;
+        nodes[ i ].child_nodes[ nodes[ i ].child_node_count++ ] = element - ( header.material_cnt + header.mesh_count );
         }
 
     /* meshes */
-    for( uint32_t j = 0; i < node.mesh_count; i++ )
+    for( uint32_t j = 0; j < node.mesh_count; j++ )
         {
         if( fread_s( &element, sizeof(element), 1, sizeof(element), input->fhnd ) != sizeof(element) )
             {
             return( false );
             }
 
-        nodes[ i ].child_meshes[ nodes[ i ].child_mesh_count++ ] = element;
+        nodes[ i ].child_meshes[ nodes[ i ].child_mesh_count++ ] = element - header.material_cnt;
         }
     }
 
@@ -1081,10 +1116,13 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadTextureStorageRequirements( uint32_t *byte_count, AssetFileReader *input )
+bool AssetFile_ReadTextureStorageRequirements( uint32_t *channel_cnt, uint32_t *width, uint32_t *height, uint32_t *byte_count, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_TEXTURE
  || !input->asset_start
+ || channel_cnt == NULL
+ || width == NULL
+ || height == NULL
  || byte_count == NULL )
     {
     return( false );
@@ -1101,6 +1139,9 @@ if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof
     return( false );
     }
 
+*channel_cnt = header.channel_cnt;
+*width = header.width;
+*height = header.height;
 *byte_count = header.byte_size;
 return( true );
 

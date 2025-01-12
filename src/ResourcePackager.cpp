@@ -13,9 +13,9 @@
 
 #include "cjson.h"
 #include "AssetFile.hpp"
-#include "Model.hpp"
-#include "Shader.hpp"
-#include "Texture.hpp"
+#include "ExportModel.hpp"
+#include "ExportShader.hpp"
+#include "ExportTexture.hpp"
 #include "ResourceUtilities.hpp"
 
 #define MAX_ARGUMENT_LENGTH         ( 500 )
@@ -484,7 +484,7 @@ for( auto &entry : visitor.asset_map )
         {
         case ASSET_FILE_ASSET_KIND_MODEL:
             this_stats = {};
-            if( !Model_Load( entry.first, entry.second.filename.c_str(), &texture_map, &this_stats, &output_file ) )
+            if( !ExportModel_Export( entry.first, entry.second.filename.c_str(), &texture_map, &this_stats, &output_file ) )
                 {
                 print_error( "Failed to load model (%s).  Exiting...", entry.second.filename.c_str() );
                 goto error_cleanup;
@@ -496,7 +496,7 @@ for( auto &entry : visitor.asset_map )
 
         case ASSET_FILE_ASSET_KIND_SHADER:
             this_stats = {};
-            if( !Shader_Load( entry.first, entry.second.filename.c_str(), entry.second.shader_target.c_str(), entry.second.shader_entry_point.c_str(), &this_stats, &output_file) )
+            if( !ExportShader_Export( entry.first, entry.second.filename.c_str(), entry.second.shader_target.c_str(), entry.second.shader_entry_point.c_str(), &this_stats, &output_file) )
                 {
                 print_error( "Failed to load shader (%s).  Exiting...", entry.second.filename.c_str() );
                 }
@@ -507,7 +507,7 @@ for( auto &entry : visitor.asset_map )
 
         case ASSET_FILE_ASSET_KIND_TEXTURE:
             this_stats = {};
-            if( !Texture_Load( entry.first, entry.second.filename.c_str(), &this_stats, &output_file ) )
+            if( !ExportTexture_Export( entry.first, entry.second.filename.c_str(), &this_stats, &output_file ) )
                 {
                 print_error( "Failed to load texture (%s).  Exiting...", entry.second.filename.c_str() );
                 }

@@ -149,18 +149,18 @@
   <ItemGroup>
     <ClCompile Include="..\src\AssetFile.cpp" />
     <ClCompile Include="..\src\cJSON\cjson.c" />
-    <ClCompile Include="..\src\main.cpp" />
-    <ClCompile Include="..\src\Model.cpp" />
-    <ClCompile Include="..\src\Shader.cpp" />
-    <ClCompile Include="..\src\Texture.cpp" />
+    <ClCompile Include="..\src\ExportModel.cpp" />
+    <ClCompile Include="..\src\ExportShader.cpp" />
+    <ClCompile Include="..\src\ExportTexture.cpp" />
+    <ClCompile Include="..\src\ResourcePackager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\AssetFile.hpp" />
     <ClInclude Include="..\src\cJSON\cjson.h" />
-    <ClInclude Include="..\src\Model.hpp" />
+    <ClInclude Include="..\src\ExportModel.hpp" />
+    <ClInclude Include="..\src\ExportShader.hpp" />
+    <ClInclude Include="..\src\ExportTexture.hpp" />
     <ClInclude Include="..\src\ResourceUtilities.hpp" />
-    <ClInclude Include="..\src\Shader.hpp" />
-    <ClInclude Include="..\src\Texture.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
