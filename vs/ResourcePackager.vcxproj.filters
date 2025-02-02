@@ -25,4 +25,7 @@
     <ClInclude Include="..\src\ExportShader.hpp" />
     <ClInclude Include="..\src\ExportTexture.hpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\assets\assets.json" />
+  </ItemGroup>
 </Project>

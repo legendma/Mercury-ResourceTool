@@ -64,7 +64,7 @@ if( !AssetFile_BeginWritingAsset( id, ASSET_FILE_ASSET_KIND_TEXTURE, output ) )
     }
 
 int pixels_length = width * height * channel_count;
-if( !AssetFile_DescribeTexture2( channel_count, width, height, width * height * pixels_length, output )
+if( !AssetFile_DescribeTexture2( channel_count, width, height, pixels_length, output )
  || !AssetFile_WriteTexture( image, pixels_length, output ) )
     {
     print_error( "ExportTexture_Export could not write texture asset header to binary (%s).", filename );

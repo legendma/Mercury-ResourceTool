@@ -162,6 +162,9 @@
     <ClInclude Include="..\src\ExportTexture.hpp" />
     <ClInclude Include="..\src\ResourceUtilities.hpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\assets\assets.json" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

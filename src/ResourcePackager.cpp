@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <string>
+#include <sstream>
 #include <unordered_map>
 #include <vector>
 #include <io.h>
@@ -14,7 +15,7 @@
 #include "cjson.h"
 #include "AssetFile.hpp"
 #include "ExportModel.hpp"
-#include "ExportShader.hpp"
+//#include "ExportShader.hpp"
 #include "ExportTexture.hpp"
 #include "ResourceUtilities.hpp"
 
@@ -73,8 +74,8 @@ typedef struct _DefinitionVisitor
                         kind = ASSET_FILE_ASSET_KIND_INVALID;
         std::string     filename;
         std::string     stripped_filename;
-        std::string     shader_target;
-        std::string     shader_entry_point;
+        //std::string     shader_target;
+        //std::string     shader_entry_point;
 
         } AssetDescriptor;
 
@@ -115,42 +116,42 @@ typedef struct _DefinitionVisitor
     } /* VisitModel() */
 
 
-    /***************************************************************
-    *
-    *   VisitShader()
-    *
-    *   DESCRIPTION:
-    *       Tabulate the shader asset in the descriptor JSON.
-    *
-    ***************************************************************/
+    ///***************************************************************
+    //*
+    //*   VisitShader()
+    //*
+    //*   DESCRIPTION:
+    //*       Tabulate the shader asset in the descriptor JSON.
+    //*
+    //***************************************************************/
 
-    virtual void VisitShader( const char *asset_id, const char *filename, const char *target, const char *entry_point )
-    {
-    std::string stripped = strip_filename( filename );
-    if( std::find( seen_filenames.begin(), seen_filenames.end(), stripped ) != seen_filenames.end() )
-        {
-        print_warning( "Found duplicate filename (%s).  This time as SHADER.  Ignoring (%s)...", stripped, filename );
-        return;
-        }
+    //virtual void VisitShader( const char *asset_id, const char *filename, const char *target, const char *entry_point )
+    //{
+    //std::string stripped = strip_filename( filename );
+    //if( std::find( seen_filenames.begin(), seen_filenames.end(), stripped ) != seen_filenames.end() )
+    //    {
+    //    print_warning( "Found duplicate filename (%s).  This time as SHADER.  Ignoring (%s)...", stripped, filename );
+    //    return;
+    //    }
 
-    seen_filenames.push_back( stripped );
+    //seen_filenames.push_back( stripped );
 
-    AssetFileAssetId id = AssetFile_MakeAssetIdFromName( asset_id, (uint32_t)strlen( asset_id ) );
-    if( asset_map.find( id ) != asset_map.end() )
-        {
-        print_warning( "Found duplicate asset name (%s).  This time as SHADER.  Overwriting with (%s)...", asset_id, filename );
-        }
+    //AssetFileAssetId id = AssetFile_MakeAssetIdFromName( asset_id, (uint32_t)strlen( asset_id ) );
+    //if( asset_map.find( id ) != asset_map.end() )
+    //    {
+    //    print_warning( "Found duplicate asset name (%s).  This time as SHADER.  Overwriting with (%s)...", asset_id, filename );
+    //    }
 
-    AssetDescriptor descriptor = {};
-    descriptor.kind               = ASSET_FILE_ASSET_KIND_SHADER;
-    descriptor.filename           = std::string( filename );
-    descriptor.stripped_filename  = stripped;
-    descriptor.shader_target      = std::string( target );
-    descriptor.shader_entry_point = std::string( entry_point );
+    //AssetDescriptor descriptor = {};
+    //descriptor.kind               = ASSET_FILE_ASSET_KIND_SHADER;
+    //descriptor.filename           = std::string( filename );
+    //descriptor.stripped_filename  = stripped;
+    //descriptor.shader_target      = std::string( target );
+    //descriptor.shader_entry_point = std::string( entry_point );
 
-    asset_map[ id ] = descriptor;
+    //asset_map[ id ] = descriptor;
 
-    } /* VisitShader() */
+    //} /* VisitShader() */
 
 
     /***************************************************************
@@ -448,7 +449,7 @@ AssetFileWriter output_file = {};
 std::unordered_map<std::string, AssetFileAssetId> texture_map;
 WriteStats models_stats = {};
 WriteStats textures_stats = {};
-WriteStats shaders_stats = {};
+//WriteStats shaders_stats = {};
 const cJSON *assets = cJSON_GetObjectItemCaseSensitive( json, "assets" );
 if( !assets )
     {
@@ -494,16 +495,16 @@ for( auto &entry : visitor.asset_map )
             models_stats.written_sz += this_stats.written_sz;
             break;
 
-        case ASSET_FILE_ASSET_KIND_SHADER:
-            this_stats = {};
-            if( !ExportShader_Export( entry.first, entry.second.filename.c_str(), entry.second.shader_target.c_str(), entry.second.shader_entry_point.c_str(), &this_stats, &output_file) )
-                {
-                print_error( "Failed to load shader (%s).  Exiting...", entry.second.filename.c_str() );
-                }
+        //case ASSET_FILE_ASSET_KIND_SHADER:
+        //    this_stats = {};
+        //    if( !ExportShader_Export( entry.first, entry.second.filename.c_str(), entry.second.shader_target.c_str(), entry.second.shader_entry_point.c_str(), &this_stats, &output_file) )
+        //        {
+        //        print_error( "Failed to load shader (%s).  Exiting...", entry.second.filename.c_str() );
+        //        }
 
-            shaders_stats.shaders_written++;
-            shaders_stats.written_sz += this_stats.written_sz;
-            break;
+        //    shaders_stats.shaders_written++;
+        //    shaders_stats.written_sz += this_stats.written_sz;
+        //    break;
 
         case ASSET_FILE_ASSET_KIND_TEXTURE:
             this_stats = {};
@@ -525,7 +526,8 @@ for( auto &entry : visitor.asset_map )
 
 success = AssetFile_CloseForWrite( &output_file );
 printf( "\n" );
-print_info( "%d Models (%d bytes), %d Shaders (%d bytes), %d Textures (%d bytes).", (int)models_stats.models_written, (int)models_stats.written_sz, (int)shaders_stats.shaders_written, (int)shaders_stats.written_sz, (int)textures_stats.textures_written, (int)textures_stats.written_sz );
+print_info( "%d Models (%d bytes), %d Textures (%d bytes).", (int)models_stats.models_written, (int)models_stats.written_sz, (int)textures_stats.textures_written, (int)textures_stats.written_sz );
+//print_info( "%d Models (%d bytes), %d Shaders (%d bytes), %d Textures (%d bytes).", (int)models_stats.models_written, (int)models_stats.written_sz, (int)shaders_stats.shaders_written, (int)shaders_stats.written_sz, (int)textures_stats.textures_written, (int)textures_stats.written_sz );
 
 error_cleanup:
 cJSON_Delete( json );
@@ -573,7 +575,7 @@ return( size_read == sz );
 static bool visit_all_definition_assets( const cJSON *assets, const char *asset_folder, _DefinitionVisitor *visitor )
 {
 /* Models */
-const cJSON *models = cJSON_GetObjectItemCaseSensitive( assets, "models" );
+const cJSON *models = cJSON_GetObjectItemCaseSensitive( assets, "model" );
 if( models )
     {
     std::string basefolder( asset_folder );
@@ -614,74 +616,78 @@ if( models )
             return( false );
             }
 
-        visitor->VisitModel( model_asset_id->valuestring, model_filename_str.c_str() );
+        std::ostringstream os;
+        os << models->string << "/" << model_asset_id->valuestring;
+        visitor->VisitModel( os.str().c_str(), model_filename_str.c_str() );
         }
 
     }
 
-/* Shaders */
-const cJSON *shaders = cJSON_GetObjectItemCaseSensitive( assets, "shaders" );
-if( shaders )
-    {
-    std::string basefolder( asset_folder );
-    basefolder.append( "/" );
-    
-    const cJSON *folder_object = cJSON_GetObjectItemCaseSensitive( shaders, "basefolder" );
-    if( cJSON_IsString( folder_object ) )
-        {
-        basefolder.append( folder_object->valuestring );
-        basefolder.append( "/" );
-        }
-
-    const cJSON *shader_list = cJSON_GetObjectItemCaseSensitive( shaders, "list" );
-    const cJSON *shader = NULL;
-    cJSON_ArrayForEach( shader, shader_list )
-        {
-        const cJSON *shader_filename    = cJSON_GetObjectItemCaseSensitive( shader, "filename" );
-        const cJSON *shader_asset_id    = cJSON_GetObjectItemCaseSensitive( shader, "assetid" );
-        const cJSON *shader_target      = cJSON_GetObjectItemCaseSensitive( shader, "target" );
-        const cJSON *shader_entry_point = cJSON_GetObjectItemCaseSensitive( shader, "entry_point" );
-
-        if( !shader_filename
-         || !cJSON_IsString( shader_filename ) )
-            {
-            print_error( "Could not find filename for model (%s).", cJSON_Print( shader ) );
-            return( false );
-            }
-        else if( !shader_asset_id
-              || !cJSON_IsString( shader_asset_id ) )
-            {
-            print_error( "Could not find asset ID for model (%s)", cJSON_Print( shader ) );
-            return( false );
-            }
-        else if( !shader_target
-              || !cJSON_IsString( shader_target ) )
-            {
-            print_error( "Shader definition was missing target string (%s)", cJSON_Print( shader ) );
-            return( false );
-            }
-        else if( !shader_entry_point
-              || !cJSON_IsString( shader_entry_point ) )
-            {
-            print_error( "Shader definition was missing entry point string (%s)", cJSON_Print( shader ) );
-            return( false );
-            }
-      
-        std::string shader_filename_str( basefolder );
-        shader_filename_str.append( shader_filename->valuestring );
-        if( !check_file_exists( shader_filename_str.c_str() ) )
-            {
-            print_error( "Could not find shader for filename %s (%s)", shader_filename_str.c_str(), cJSON_Print( shader ) );
-            return( false );
-            }
-
-        visitor->VisitShader( shader_asset_id->valuestring, shader_filename_str.c_str(), shader_target->valuestring, shader_entry_point->valuestring );
-        }
-
-    }
+///* Shaders */
+//const cJSON *shaders = cJSON_GetObjectItemCaseSensitive( assets, "shaders" );
+//if( shaders )
+//    {
+//    std::string basefolder( asset_folder );
+//    basefolder.append( "/" );
+//    
+//    const cJSON *folder_object = cJSON_GetObjectItemCaseSensitive( shaders, "basefolder" );
+//    if( cJSON_IsString( folder_object ) )
+//        {
+//        basefolder.append( folder_object->valuestring );
+//        basefolder.append( "/" );
+//        }
+//
+//    const cJSON *shader_list = cJSON_GetObjectItemCaseSensitive( shaders, "list" );
+//    const cJSON *shader = NULL;
+//    cJSON_ArrayForEach( shader, shader_list )
+//        {
+//        const cJSON *shader_filename    = cJSON_GetObjectItemCaseSensitive( shader, "filename" );
+//        const cJSON *shader_asset_id    = cJSON_GetObjectItemCaseSensitive( shader, "assetid" );
+//        const cJSON *shader_target      = cJSON_GetObjectItemCaseSensitive( shader, "target" );
+//        const cJSON *shader_entry_point = cJSON_GetObjectItemCaseSensitive( shader, "entry_point" );
+//
+//        if( !shader_filename
+//         || !cJSON_IsString( shader_filename ) )
+//            {
+//            print_error( "Could not find filename for model (%s).", cJSON_Print( shader ) );
+//            return( false );
+//            }
+//        else if( !shader_asset_id
+//              || !cJSON_IsString( shader_asset_id ) )
+//            {
+//            print_error( "Could not find asset ID for model (%s)", cJSON_Print( shader ) );
+//            return( false );
+//            }
+//        else if( !shader_target
+//              || !cJSON_IsString( shader_target ) )
+//            {
+//            print_error( "Shader definition was missing target string (%s)", cJSON_Print( shader ) );
+//            return( false );
+//            }
+//        else if( !shader_entry_point
+//              || !cJSON_IsString( shader_entry_point ) )
+//            {
+//            print_error( "Shader definition was missing entry point string (%s)", cJSON_Print( shader ) );
+//            return( false );
+//            }
+//      
+//        std::string shader_filename_str( basefolder );
+//        shader_filename_str.append( shader_filename->valuestring );
+//        if( !check_file_exists( shader_filename_str.c_str() ) )
+//            {
+//            print_error( "Could not find shader for filename %s (%s)", shader_filename_str.c_str(), cJSON_Print( shader ) );
+//            return( false );
+//            }
+//
+//        std::ostringstream os;
+//        os << shaders->string << "/" << shader_asset_id->valuestring;
+//        visitor->VisitShader( os.str().c_str(), shader_filename_str.c_str(), shader_target->valuestring, shader_entry_point->valuestring );
+//        }
+//
+//    }
 
 /* Textures */
-const cJSON *textures = cJSON_GetObjectItemCaseSensitive( assets, "textures" );
+const cJSON *textures = cJSON_GetObjectItemCaseSensitive( assets, "texture" );
 if( textures )
     {
     std::string basefolder( asset_folder );
@@ -722,7 +728,9 @@ if( textures )
             return( false );
             }
 
-        visitor->VisitTexture( texture_asset_id->valuestring, texture_filename_str.c_str() );
+        std::ostringstream os;
+        os << textures->string << "/" << texture_asset_id->valuestring;
+        visitor->VisitTexture( os.str().c_str(), texture_filename_str.c_str());
         }
 
     }
