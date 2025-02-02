@@ -15,6 +15,7 @@
 #include "cjson.h"
 #include "AssetFile.hpp"
 #include "ExportModel.hpp"
+#include "ExportSounds.hpp"
 //#include "ExportShader.hpp"
 #include "ExportTexture.hpp"
 #include "ResourceUtilities.hpp"
@@ -23,6 +24,7 @@
 #define ARGUMENT_INPUT_DEFINITION   "-d"
 #define ARGUMENT_OUTPUT_BINARY      "-o"
 #define ARGUMENT_ASSET_ROOT         "-r"
+#define ARGUMENT_SOUND_BANK_FOLDER  "-sb"
 
 typedef struct _ProgramArgumentsDefinition
     {
@@ -42,6 +44,12 @@ typedef struct _ProgramArgumentsAssetsRoot
     char                foldername[ MAX_ARGUMENT_LENGTH ];
     } ProgramArgumentsAssetsRoot;
 
+typedef struct _ProgramArgumentsSoundBankFolder
+    {
+    bool                is_valid;
+    char                foldername[ MAX_ARGUMENT_LENGTH ];
+    } ProgramArgumentsSoundBankFolder;
+
 typedef struct _ProgramArguments
     {
     ProgramArgumentsDefinition
@@ -50,6 +58,8 @@ typedef struct _ProgramArguments
                         output_binary;
     ProgramArgumentsAssetsRoot
                         assets_folder;
+    ProgramArgumentsSoundBankFolder
+                        output_soundbank_folder;
     } ProgramArguments;
 
 typedef struct _ParseDefinitionState
@@ -74,7 +84,7 @@ typedef struct _DefinitionVisitor
                         kind = ASSET_FILE_ASSET_KIND_INVALID;
         std::string     filename;
         std::string     stripped_filename;
-        //std::string     shader_target;
+        std::string     asset_id_str;
         //std::string     shader_entry_point;
 
         } AssetDescriptor;
@@ -110,10 +120,48 @@ typedef struct _DefinitionVisitor
     descriptor.kind              = ASSET_FILE_ASSET_KIND_MODEL;
     descriptor.filename          = std::string( filename );
     descriptor.stripped_filename = stripped;
+    descriptor.asset_id_str      = std::string( asset_id );
     
     asset_map[ id ] = descriptor;
 
     } /* VisitModel() */
+
+
+    /***************************************************************
+    *
+    *   VisitMusicClip()
+    *
+    *   DESCRIPTION:
+    *       Tabulate the music clip asset in the descriptor JSON.
+    *
+    ***************************************************************/
+
+    virtual void VisitMusicClip( const char *asset_id, const char *filename )
+    {
+    std::string stripped = strip_filename( filename );
+    if( std::find( seen_filenames.begin(), seen_filenames.end(), stripped ) != seen_filenames.end() )
+        {
+        print_warning( "Found duplicate filename (%s).  This time as MUSIC CLIP.  Ignoring (%s)...", stripped, filename );
+        return;
+        }
+
+    seen_filenames.push_back( stripped );
+
+    AssetFileAssetId id = AssetFile_MakeAssetIdFromName( asset_id, (uint32_t)strlen( asset_id ) );
+    if( asset_map.find( id ) != asset_map.end() )
+        {
+        print_warning( "Found duplicate asset name (%s).  This time as MUSIC CLIP.  Overwriting with (%s)...", asset_id, filename );
+        }
+
+    AssetDescriptor descriptor = {};
+    descriptor.kind              = ASSET_FILE_ASSET_KIND_SOUND_MUSIC_CLIP;
+    descriptor.filename          = std::string( filename );
+    descriptor.stripped_filename = stripped;
+    descriptor.asset_id_str       = std::string( asset_id );
+
+    asset_map[ id ] = descriptor;
+
+    } /* VisitMusicClip() */
 
 
     ///***************************************************************
@@ -152,6 +200,43 @@ typedef struct _DefinitionVisitor
     //asset_map[ id ] = descriptor;
 
     //} /* VisitShader() */
+
+
+    /***************************************************************
+    *
+    *   VisitSoundSample()
+    *
+    *   DESCRIPTION:
+    *       Tabulate the sound sample asset in the descriptor JSON.
+    *
+    ***************************************************************/
+
+    virtual void VisitSoundSample( const char *asset_id, const char *filename )
+    {
+    std::string stripped = strip_filename( filename );
+    if( std::find( seen_filenames.begin(), seen_filenames.end(), stripped ) != seen_filenames.end() )
+        {
+        print_warning( "Found duplicate filename (%s).  This time as SOUND SAMPLE.  Ignoring (%s)...", stripped, filename );
+        return;
+        }
+
+    seen_filenames.push_back( stripped );
+
+    AssetFileAssetId id = AssetFile_MakeAssetIdFromName( asset_id, (uint32_t)strlen( asset_id ) );
+    if( asset_map.find( id ) != asset_map.end() )
+        {
+        print_warning( "Found duplicate asset name (%s).  This time as SOUND SAMPLE.  Overwriting with (%s)...", asset_id, filename );
+        }
+
+    AssetDescriptor descriptor = {};
+    descriptor.kind              = ASSET_FILE_ASSET_KIND_SOUND_SAMPLE;
+    descriptor.filename          = std::string( filename );
+    descriptor.stripped_filename = stripped;
+    descriptor.asset_id_str       = std::string( asset_id );
+
+    asset_map[ id ] = descriptor;
+
+    } /* VisitSoundSample() */
 
 
     /***************************************************************
@@ -235,7 +320,6 @@ print_info( "Starting...\n" );
 clock_t start_time = clock();
 
 static ProgramArguments arguments;
-
 if( argc <= 1 )
     {
     printf( "Usage: ResourcePackager.exe [-d FILENAME]... [-o FILENAME]... [-r PATH]... \n" );
@@ -244,6 +328,7 @@ if( argc <= 1 )
     printf( "\t-d FILENAME   Filename with path to input .json file which lists the assets to be packaged.\n" );
     printf( "\t-o FILENAME   Filename with path to binary output file.\n" );
     printf( "\t-r PATH       Folder which is the root of assets defined in definition file.\n" );
+    printf( "\t-sb PATH      Folder which to output the sound bank files.\n" );
 
     return( 0 );
     }
@@ -267,6 +352,12 @@ if( !arguments.assets_folder.is_valid )
     {
     has_error = true;
     print_error( "No asset root folder name. (%s)", ARGUMENT_ASSET_ROOT );
+    }
+
+if( !arguments.output_soundbank_folder.is_valid )
+    {
+    has_error = true;
+    print_error( "No soundbank folder name. (%s)", ARGUMENT_SOUND_BANK_FOLDER );
     }
 
 if( !has_error )
@@ -356,6 +447,7 @@ typedef struct _ArgumentExpectations
     bool                is_setting_definition;
     bool                is_setting_asset_root;
     bool                is_setting_output_binary;
+    bool                is_setting_output_bank_folder;
     } ArgumentExpectations;
 
 
@@ -383,6 +475,11 @@ for( int i = 0; i < argc; i++ )
         expectation = {};
         expectation.is_setting_asset_root = true;
         }
+    else if( strcmp( temp_argument, ARGUMENT_SOUND_BANK_FOLDER ) == 0 )
+        {
+        expectation = {};
+        expectation.is_setting_output_bank_folder = true;
+        }
     else
         {
         if( expectation.is_setting_asset_root )
@@ -399,6 +496,11 @@ for( int i = 0; i < argc; i++ )
             {
             strcpy_s( arguments->output_binary.filename, sizeof( arguments->output_binary.filename ), temp_argument );
             arguments->output_binary.is_valid = ( strlen( temp_argument ) > 0 );
+            }
+        else if( expectation.is_setting_output_bank_folder )
+            {
+            strcpy_s( arguments->output_soundbank_folder.foldername, sizeof( arguments->output_soundbank_folder.foldername ), temp_argument );
+            arguments->output_soundbank_folder.is_valid = ( strlen( temp_argument ) > 0 );
             }
         }
     }
@@ -451,6 +553,10 @@ WriteStats models_stats = {};
 WriteStats textures_stats = {};
 //WriteStats shaders_stats = {};
 AssetIdToExtentMap texture_extent_map;
+WriteStats sound_sample_stats = {};
+WriteStats music_clip_stats = {};
+std::vector<ExportSoundPair> sound_sample_pairs;
+std::vector<ExportSoundPair> music_clip_pairs;
 const cJSON *assets = cJSON_GetObjectItemCaseSensitive( json, "assets" );
 if( !assets )
     {
@@ -498,6 +604,10 @@ for( auto &entry : visitor.asset_map )
             models_stats.written_sz += this_stats.written_sz;
             break;
 
+        case ASSET_FILE_ASSET_KIND_SOUND_MUSIC_CLIP:
+            music_clip_pairs.push_back( { entry.second.filename.c_str(), entry.second.asset_id_str.c_str() });
+            break;
+
         //case ASSET_FILE_ASSET_KIND_SHADER:
         //    this_stats = {};
         //    if( !ExportShader_Export( entry.first, entry.second.filename.c_str(), entry.second.shader_target.c_str(), entry.second.shader_entry_point.c_str(), &this_stats, &output_file) )
@@ -508,6 +618,10 @@ for( auto &entry : visitor.asset_map )
         //    shaders_stats.shaders_written++;
         //    shaders_stats.written_sz += this_stats.written_sz;
         //    break;
+
+        case ASSET_FILE_ASSET_KIND_SOUND_SAMPLE:
+            sound_sample_pairs.push_back( { entry.second.filename.c_str(), entry.second.asset_id_str.c_str() } );
+            break;
 
         case ASSET_FILE_ASSET_KIND_TEXTURE:
             this_stats = {};
@@ -527,11 +641,21 @@ for( auto &entry : visitor.asset_map )
 
     }
 
+if( sound_sample_pairs.size()
+ || music_clip_pairs.size() )
+    {
+    ExportSounds_CreateBanks( sound_sample_pairs, sound_sample_stats, music_clip_pairs, music_clip_stats, arguments->output_soundbank_folder.foldername );
+    }
+	
 success = ExportTexture_WriteTextureExtents( texture_extent_map, &output_file );
+
 success = AssetFile_CloseForWrite( &output_file );
 printf( "\n" );
-print_info( "%d Models (%d bytes), %d Textures (%d bytes).", (int)models_stats.models_written, (int)models_stats.written_sz, (int)textures_stats.textures_written, (int)textures_stats.written_sz );
-//print_info( "%d Models (%d bytes), %d Shaders (%d bytes), %d Textures (%d bytes).", (int)models_stats.models_written, (int)models_stats.written_sz, (int)shaders_stats.shaders_written, (int)shaders_stats.written_sz, (int)textures_stats.textures_written, (int)textures_stats.written_sz );
+print_info( "%d Models (%d bytes), %d Textures (%d bytes), %d Sound Samples (%d bytes), %d Music Clips (%d bytes).",
+            (int)models_stats.models_written, (int)models_stats.written_sz,
+            (int)textures_stats.textures_written, (int)textures_stats.written_sz,
+            (int)sound_sample_stats.sound_samples_written, (int)sound_sample_stats.written_sz,
+            (int)music_clip_stats.music_clips_written, (int)music_clip_stats.written_sz );
 
 error_cleanup:
 cJSON_Delete( json );
@@ -735,6 +859,104 @@ if( textures )
         std::ostringstream os;
         os << textures->string << "/" << texture_asset_id->valuestring;
         visitor->VisitTexture( os.str().c_str(), texture_filename_str.c_str());
+        }
+
+    }
+
+/* Sound samples */
+const cJSON *sound_samples = cJSON_GetObjectItemCaseSensitive( assets, "sound_sample" );
+if( sound_samples )
+    {
+    std::string basefolder( asset_folder );
+    basefolder.append( "/" );
+    
+    const cJSON *folder_object = cJSON_GetObjectItemCaseSensitive( sound_samples, "basefolder" );
+    if( cJSON_IsString( folder_object ) )
+        {
+        basefolder.append( folder_object->valuestring );
+        basefolder.append( "/" );
+        }
+
+    const cJSON *sound_sample_list = cJSON_GetObjectItemCaseSensitive( sound_samples, "list" );
+    const cJSON *sound_sample = NULL;
+    cJSON_ArrayForEach( sound_sample, sound_sample_list )
+        {
+        const cJSON *sound_sample_filename = cJSON_GetObjectItemCaseSensitive( sound_sample, "filename" );
+        const cJSON *sound_sample_asset_id = cJSON_GetObjectItemCaseSensitive( sound_sample, "assetid" );
+
+        if( !sound_sample_filename
+         || !cJSON_IsString( sound_sample_filename ) )
+            {
+            print_error( "Could not find filename for sound sample (%s).", cJSON_Print( sound_sample ) );
+            return( false );
+            }
+        else if( !sound_sample_asset_id
+              || !cJSON_IsString( sound_sample_asset_id ) )
+            {
+            print_error( "Could not find asset ID for sound sample (%s)", cJSON_Print( sound_sample ) );
+            return( false );
+            }
+      
+        std::string sound_sample_filename_str( basefolder );
+        sound_sample_filename_str.append( sound_sample_filename->valuestring );
+        if( !check_file_exists( sound_sample_filename_str.c_str() ) )
+            {
+            print_error( "Could not find sound sample for filename %s (%s)", sound_sample_filename_str.c_str(), cJSON_Print( sound_sample ) );
+            return( false );
+            }
+
+        std::ostringstream os;
+        os << sound_samples->string << "/" << sound_sample_asset_id->valuestring;
+        visitor->VisitSoundSample( os.str().c_str(), sound_sample_filename_str.c_str());
+        }
+
+    }
+
+/* Music clips */
+const cJSON *music_clips = cJSON_GetObjectItemCaseSensitive( assets, "sound_music" );
+if( music_clips )
+    {
+    std::string basefolder( asset_folder );
+    basefolder.append( "/" );
+    
+    const cJSON *folder_object = cJSON_GetObjectItemCaseSensitive( music_clips, "basefolder" );
+    if( cJSON_IsString( folder_object ) )
+        {
+        basefolder.append( folder_object->valuestring );
+        basefolder.append( "/" );
+        }
+
+    const cJSON *music_clip_list = cJSON_GetObjectItemCaseSensitive( music_clips, "list" );
+    const cJSON *music_clip = NULL;
+    cJSON_ArrayForEach( music_clip, music_clip_list )
+        {
+        const cJSON *music_clip_filename = cJSON_GetObjectItemCaseSensitive( music_clip, "filename" );
+        const cJSON *music_clip_asset_id = cJSON_GetObjectItemCaseSensitive( music_clip, "assetid" );
+
+        if( !music_clip_filename
+         || !cJSON_IsString( music_clip_filename ) )
+            {
+            print_error( "Could not find filename for music clip (%s).", cJSON_Print( music_clip ) );
+            return( false );
+            }
+        else if( !music_clip_asset_id
+              || !cJSON_IsString( music_clip_asset_id ) )
+            {
+            print_error( "Could not find asset ID for music clip (%s)", cJSON_Print( music_clip ) );
+            return( false );
+            }
+      
+        std::string music_clip_filename_str( basefolder );
+        music_clip_filename_str.append( music_clip_filename->valuestring );
+        if( !check_file_exists( music_clip_filename_str.c_str() ) )
+            {
+            print_error( "Could not find music clip for filename %s (%s)", music_clip_filename_str.c_str(), cJSON_Print( music_clip ) );
+            return( false );
+            }
+
+        std::ostringstream os;
+        os << music_clips->string << "/" << music_clip_asset_id->valuestring;
+        visitor->VisitMusicClip( os.str().c_str(), music_clip_filename_str.c_str());
         }
 
     }

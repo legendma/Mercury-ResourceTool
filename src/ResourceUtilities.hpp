@@ -13,6 +13,8 @@ typedef struct _WriteStats
     uint32_t            nodes_written;
     uint32_t            shaders_written;
     uint32_t            textures_written;
+    uint32_t            sound_samples_written;
+    uint32_t            music_clips_written;
     } WriteStats;
 
 /*******************************************************************

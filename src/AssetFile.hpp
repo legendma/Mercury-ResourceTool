@@ -14,6 +14,11 @@
 #define ASSET_FILE_TEXTURE_EXTENT_ASSET_ID \
                                     0xffffffff
 
+#define ASSET_FILE_SOUND_BANK_FILENAME \
+                                    "SoundSample.bank"
+#define ASSET_FILE_MUSIC_BANK_FILENAME \
+                                    "MusicClips.bank"
+
 typedef struct _AssetFileNameString
     {
     char                str[ ASSET_FILE_MAX_NAME_STR_LEN + 1 ];
@@ -25,6 +30,8 @@ typedef enum _AssetFileAssetKind
     ASSET_FILE_ASSET_KIND_INVALID,
     ASSET_FILE_ASSET_KIND_MODEL,
     ASSET_FILE_ASSET_KIND_SHADER,
+    ASSET_FILE_ASSET_KIND_SOUND_SAMPLE,
+    ASSET_FILE_ASSET_KIND_SOUND_MUSIC_CLIP,
     ASSET_FILE_ASSET_KIND_TEXTURE,
     ASSET_FILE_ASSET_KIND_TEXTURE_EXTENTS
     } AssetFileAssetKind;

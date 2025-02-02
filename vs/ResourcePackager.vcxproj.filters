@@ -9,6 +9,7 @@
     <ClCompile Include="..\src\ExportShader.cpp" />
     <ClCompile Include="..\src\ExportTexture.cpp" />
     <ClCompile Include="..\src\ResourcePackager.cpp" />
+    <ClCompile Include="..\src\ExportSounds.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="cjson">
@@ -24,6 +25,10 @@
     <ClInclude Include="..\src\ExportModel.hpp" />
     <ClInclude Include="..\src\ExportShader.hpp" />
     <ClInclude Include="..\src\ExportTexture.hpp" />
+    <ClInclude Include="..\src\ExportSounds.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\assets\assets.json" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\assets\assets.json" />
