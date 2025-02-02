@@ -11,6 +11,8 @@
                                     ( 10 )
 #define ASSET_FILE_MODEL_NODE_CHILD_NODE_MAX_COUNT \
                                     ( 50 )
+#define ASSET_FILE_TEXTURE_EXTENT_ASSET_ID \
+                                    0xffffffff
 
 typedef struct _AssetFileNameString
     {
@@ -23,7 +25,8 @@ typedef enum _AssetFileAssetKind
     ASSET_FILE_ASSET_KIND_INVALID,
     ASSET_FILE_ASSET_KIND_MODEL,
     ASSET_FILE_ASSET_KIND_SHADER,
-    ASSET_FILE_ASSET_KIND_TEXTURE
+    ASSET_FILE_ASSET_KIND_TEXTURE,
+    ASSET_FILE_ASSET_KIND_TEXTURE_EXTENTS
     } AssetFileAssetKind;
 
 typedef enum _AssetFileModelElementKind
@@ -89,6 +92,13 @@ typedef struct _AssetFileModelMaterial
     AssetFileAssetId    textures[ ASSET_FILE_MODEL_TEXTURES_COUNT ];
                                     /* material texture maps        */
     } AssetFileModelMaterial;
+    
+typedef struct _AssetFileTextureExtent
+    {
+    AssetFileAssetId    texture_id; /* ID of the texture            */
+    uint16_t            width;      /* texture width                */
+    uint16_t            height;     /* texture height               */
+    } AssetFileTextureExtent;
 
 typedef struct _AssetFileWriter
     {
@@ -123,8 +133,10 @@ bool   AssetFile_DescribeModelNode( const uint32_t node_count, const float *mat4
 bool   AssetFile_DescribeShader( const uint32_t byte_size, AssetFileWriter *output );
 bool   AssetFile_DescribeTexture( const uint32_t byte_size, AssetFileWriter *output );
 bool   AssetFile_DescribeTexture2( const uint32_t channel_cnt, const uint32_t width, const uint32_t height, const uint32_t byte_size, AssetFileWriter *output );
+bool   AssetFile_DescribeTextureExtents( const uint16_t element_cnt, AssetFileWriter *output );
 bool   AssetFile_EndReadingAsset( AssetFileReader *input );
 bool   AssetFile_EndWritingModel( const uint32_t root_node_element, AssetFileWriter *output );
+bool   AssetFile_EndWritingTextureExtents( AssetFileWriter *output );
 size_t AssetFile_GetWriteSize( const AssetFileWriter *output );
 bool   AssetFile_OpenForRead( const char *filename, AssetFileReader *input );
 bool   AssetFile_ReadModelMaterials( const uint32_t material_capacity, uint32_t *material_count, AssetFileModelMaterial *materials, AssetFileReader *input );
@@ -136,12 +148,15 @@ bool   AssetFile_ReadShaderBinary( const uint32_t buffer_sz, uint32_t *read_sz, 
 bool   AssetFile_ReadShaderStorageRequirements( uint32_t *byte_count, AssetFileReader *input );
 bool   AssetFile_ReadTextureBinary( const uint32_t buffer_sz, uint32_t *read_sz, uint8_t *buffer, AssetFileReader *input );
 bool   AssetFile_ReadTextureStorageRequirements( uint32_t *channel_cnt, uint32_t *width, uint32_t *height, uint32_t *byte_count, AssetFileReader *input );
+bool   AssetFile_ReadTextureExtents( const uint16_t output_cnt, AssetFileTextureExtent *out_elements, AssetFileReader *input );
+bool   AssetFile_ReadTextureExtentsStorageRequirements( uint16_t *element_cnt, AssetFileReader *input );
 bool   AssetFile_WriteModelMaterialTextureMaps( const AssetFileAssetId *asset_ids, const uint8_t count, AssetFileWriter *output );
 bool   AssetFile_WriteModelMeshIndex( const AssetFileModelIndex index, AssetFileWriter *output );
 bool   AssetFile_WriteModelMeshVertex( const AssetFileModelVertex *vertex, AssetFileWriter *output );
 bool   AssetFile_WriteModelNodeChildElements( const AssetFileModelIndex *element_ids, const uint32_t count, AssetFileWriter *output );
 bool   AssetFile_WriteShader( const uint8_t *blob, const uint32_t blob_size, AssetFileWriter *output );
 bool   AssetFile_WriteTexture( const uint8_t *image, const uint32_t image_size, AssetFileWriter *output );
+bool   AssetFile_WriteTextureExtent( const AssetFileAssetId id, const uint16_t width, const uint16_t height, AssetFileWriter *output );
 
 
 /*******************************************************************

@@ -4,6 +4,7 @@
 #include <stb_image_write.h>
 
 #include "AssetFile.hpp"
+#include "ExportTexture.hpp"
 #include "ResourceUtilities.hpp"
 
 
@@ -16,7 +17,7 @@
 *
 *******************************************************************/
 
-bool ExportTexture_Export( const AssetFileAssetId id, const char *filename, WriteStats *stats, AssetFileWriter *output )
+bool ExportTexture_Export( const AssetFileAssetId id, const char *filename, AssetIdToExtentMap &extent_map, WriteStats *stats, AssetFileWriter *output )
 {
 *stats = {};
 size_t write_start_size = AssetFile_GetWriteSize( output );
@@ -32,6 +33,9 @@ if( !image )
     }
 
 int written_length = {};
+
+assert( extent_map.find( id ) == extent_map.end() );
+extent_map[ id ] = { (uint16_t)width, (uint16_t)height };
 //unsigned char *png = stbi_write_png_to_mem( image, 0, width, height, channel_count, &written_length );
 //stbi_image_free( image );
 //if( !png )
@@ -71,7 +75,6 @@ if( !AssetFile_DescribeTexture2( channel_count, width, height, pixels_length, ou
     return( false );
     }
 
-///
 
 size_t write_total_size = AssetFile_GetWriteSize( output ) - write_start_size;
 stats->written_sz += write_total_size;
@@ -80,3 +83,42 @@ print_info( "[TEXTURE]   %s     %d bytes.", strip_filename( filename ).c_str(), 
 return( true );
 
 } /* ExportTexture_Export() */
+
+
+/*******************************************************************
+*
+*   ExportTexture_WriteTextureExtents()
+*
+*   DESCRIPTION:
+*       Write the map of texture asset ID's to their width/height.
+*
+*******************************************************************/
+
+bool ExportTexture_WriteTextureExtents( AssetIdToExtentMap &extent_map, AssetFileWriter *output )
+{
+if( !AssetFile_BeginWritingAsset( ASSET_FILE_TEXTURE_EXTENT_ASSET_ID, ASSET_FILE_ASSET_KIND_TEXTURE_EXTENTS, output ) )
+    {
+    print_error( "ExportTexture_WriteTextureExtents() could not begin writing texture extent map." );
+    return( false );
+    }
+
+if( !AssetFile_DescribeTextureExtents( (uint16_t)extent_map.size(), output ) )
+    {
+    print_error( "ExportTexture_WriteTextureExtents() could not describe the texture extent map." );
+    return( false );
+    }
+
+for( auto &extent : extent_map )
+    {
+    AssetFile_WriteTextureExtent( extent.first, extent.second.width, extent.second.height, output );
+    }
+
+if( !AssetFile_EndWritingTextureExtents( output ) )
+    {
+    print_error( "ExportTexture_WriteTextureExtents() could not finish writing the texture extent map." );
+    return( false );
+    }
+
+return( true );
+
+}   /* ExportTexture_WriteTextureExtents() */

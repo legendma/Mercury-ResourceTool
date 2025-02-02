@@ -79,6 +79,12 @@ typedef struct _TextureHeader
     uint32_t            byte_size;  /* compressed image blob size   */
     } TextureHeader;
 
+typedef struct _TextureExtentHeader
+    {
+    uint16_t            texture_cnt;/* number of textures in table  */
+    } TextureExtentHeader;
+
+
 static bool JumpToAssetInTable( const AssetFileAssetId id, const uint32_t table_count, FILE *file );
 static bool JumpToModelMaterial( const uint32_t asset_start, const uint32_t material_index, FILE *file );
 static bool JumpToModelMesh( const uint32_t asset_start, const uint32_t mesh_index, FILE *file );
@@ -519,6 +525,36 @@ return( true );
 
 /*******************************************************************
 *
+*   AssetFile_DescribeTextureExtents()
+*
+*   DESCRIPTION:
+*       Provide the number of elements in the texture extent map
+*       table.
+*
+*******************************************************************/
+
+bool AssetFile_DescribeTextureExtents( const uint16_t element_cnt, AssetFileWriter *output )
+{
+if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE_EXTENTS
+ || !output->asset_start
+ || fseek( output->fhnd, output->asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+TextureExtentHeader header = {};
+header.texture_cnt = element_cnt;
+
+ensure( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
+output->caret = (uint32_t)ftell( output->fhnd );
+
+return( true );
+
+}   /* AssetFile_DescribeTextureExtents() */
+
+
+/*******************************************************************
+*
 *   AssetFile_EndReadingAsset()
 *
 *   DESCRIPTION:
@@ -589,6 +625,31 @@ output->model_vertices_written = 0;
 return( true );
 
 } /* AssetFile_EndWritingModel() */
+
+
+/*******************************************************************
+*
+*   AssetFile_EndWritingTextureExtents()
+*
+*   DESCRIPTION:
+*       Finish writing a model by setting its root node.
+*
+*******************************************************************/
+
+bool AssetFile_EndWritingTextureExtents( AssetFileWriter *output )
+{
+if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE_EXTENTS
+ || !output->asset_start )
+    {
+    return( false );
+    }
+
+output->asset_start = 0;
+output->kind = ASSET_FILE_ASSET_KIND_INVALID;
+
+return( true );
+
+}   /* AssetFile_EndWritingTextureExtents() */
 
 
 /*******************************************************************
@@ -1150,6 +1211,77 @@ return( true );
 
 /*******************************************************************
 *
+*   AssetFile_ReadTextureExtents()
+*
+*   DESCRIPTION:
+*       Read the texture extent table array.
+*
+*******************************************************************/
+
+bool AssetFile_ReadTextureExtents( const uint16_t output_cnt, AssetFileTextureExtent *out_elements, AssetFileReader *input )
+{
+uint16_t element_cnt;
+if( !AssetFile_ReadTextureExtentsStorageRequirements( &element_cnt, input )
+ || output_cnt < element_cnt )
+    {
+    return( false );
+    }
+
+for( uint16_t i = 0; i < element_cnt; i++ )
+    {
+    AssetFileTextureExtent *element = &out_elements[ i ];
+
+    if( fread_s( &element->texture_id, sizeof( element->texture_id ), 1, sizeof( element->texture_id ), input->fhnd ) != sizeof( element->texture_id )
+     || fread_s( &element->width,      sizeof( element->width ),      1, sizeof( element->width ),      input->fhnd ) != sizeof( element->width )
+     || fread_s( &element->height,     sizeof( element->height ),     1, sizeof( element->height ),     input->fhnd ) != sizeof( element->height ) )
+        {
+        return( false );
+        }
+    }
+
+return( true );
+
+} /* AssetFile_ReadTextureExtents() */
+
+
+/*******************************************************************
+*
+*   AssetFile_ReadTextureExtentsStorageRequirements()
+*
+*   DESCRIPTION:
+*       Read the array size required for the texture extent table.
+*
+*******************************************************************/
+
+bool AssetFile_ReadTextureExtentsStorageRequirements( uint16_t *element_cnt, AssetFileReader *input )
+{
+if( input->kind != ASSET_FILE_ASSET_KIND_TEXTURE_EXTENTS
+ || !input->asset_start
+ || element_cnt == NULL )
+    {
+    return( false );
+    }
+
+if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+TextureExtentHeader header = {};
+if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+    {
+    return( false );
+    }
+
+*element_cnt = header.texture_cnt;
+
+return( true );
+
+} /* AssetFile_ReadTextureExtentsStorageRequirements() */
+
+
+/*******************************************************************
+*
 *   AssetFile_WriteModelMaterialTextureMaps()
 *
 *   DESCRIPTION:
@@ -1312,6 +1444,35 @@ output->kind = ASSET_FILE_ASSET_KIND_INVALID;
 return( true );
 
 } /* AssetFile_WriteTexture() */
+
+
+/*******************************************************************
+*
+*   AssetFile_WriteTextureExtent()
+*
+*   DESCRIPTION:
+*       Write the texture data to the asset binary.  This also ends
+*       the asset writing session.
+*
+*******************************************************************/
+
+bool AssetFile_WriteTextureExtent( const AssetFileAssetId id, const uint16_t width, const uint16_t height, AssetFileWriter *output )
+{
+if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE_EXTENTS
+ || !output->asset_start )
+    {
+    return( false );
+    }
+
+ensure( fwrite( &id, 1, sizeof( id ), output->fhnd ) == sizeof( id ) );
+ensure( fwrite( &width, 1, sizeof( width ), output->fhnd ) == sizeof( width ) );
+ensure( fwrite( &height, 1, sizeof( height ), output->fhnd ) == sizeof( height ) );
+
+output->caret = (uint32_t)ftell( output->fhnd );
+
+return( true );
+
+} /* AssetFile_WriteTextureExtent() */
 
 
 /*******************************************************************
