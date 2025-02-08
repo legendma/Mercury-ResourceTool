@@ -326,7 +326,7 @@ if( argc <= 1 )
     printf( "\tParse and package assets to binary file.\n\n" );
     printf( "Options:\n" );
     printf( "\t-d FILENAME   Filename with path to input .json file which lists the assets to be packaged.\n" );
-    printf( "\t-o FILENAME   Filename with path to binary output file.\n" );
+    printf( "\t-o PATH       Folder to write binary output file.\n" );
     printf( "\t-r PATH       Folder which is the root of assets defined in definition file.\n" );
     printf( "\t-sb PATH      Folder which to output the sound bank files.\n" );
 
@@ -494,7 +494,7 @@ for( int i = 0; i < argc; i++ )
             }
         else if( expectation.is_setting_output_binary )
             {
-            strcpy_s( arguments->output_binary.filename, sizeof( arguments->output_binary.filename ), temp_argument );
+            sprintf_s( arguments->output_binary.filename, sizeof( arguments->output_binary.filename ), "%s\\%s", temp_argument, ASSET_FILE_BINARY_FILENAME );
             arguments->output_binary.is_valid = ( strlen( temp_argument ) > 0 );
             }
         else if( expectation.is_setting_output_bank_folder )
@@ -651,11 +651,11 @@ success = ExportTexture_WriteTextureExtents( texture_extent_map, &output_file );
 
 success = AssetFile_CloseForWrite( &output_file );
 printf( "\n" );
-print_info( "%d Models (%d bytes), %d Textures (%d bytes), %d Sound Samples (%d bytes), %d Music Clips (%d bytes).",
+print_info( "<" ASSET_FILE_BINARY_FILENAME ">  %d Models (%d bytes), %d Textures (%d bytes)",
             (int)models_stats.models_written, (int)models_stats.written_sz,
-            (int)textures_stats.textures_written, (int)textures_stats.written_sz,
-            (int)sound_sample_stats.sound_samples_written, (int)sound_sample_stats.written_sz,
-            (int)music_clip_stats.music_clips_written, (int)music_clip_stats.written_sz );
+            (int)textures_stats.textures_written, (int)textures_stats.written_sz );
+print_info( "<" ASSET_FILE_SOUND_BANK_FILENAME ">  %d samples (%0.1f MB).", (int)sound_sample_stats.sound_samples_written, ( (float)sound_sample_stats.written_sz ) / ( 1024 * 1024 ) );
+print_info( "<" ASSET_FILE_MUSIC_BANK_FILENAME ">  %d clips (%0.1f MB).", (int)music_clip_stats.music_clips_written, ( (float)music_clip_stats.written_sz ) / ( 1024 * 1024) );
 
 error_cleanup:
 cJSON_Delete( json );

@@ -14,6 +14,8 @@
 #define ASSET_FILE_TEXTURE_EXTENT_ASSET_ID \
                                     0xffffffff
 
+#define ASSET_FILE_BINARY_FILENAME   "AllAssets.bin"
+
 #define ASSET_FILE_SOUND_BANK_FILENAME \
                                     "SoundSample.bank"
 #define ASSET_FILE_MUSIC_BANK_FILENAME \

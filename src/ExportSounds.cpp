@@ -34,8 +34,11 @@ static bool CreateSubsound( const ExportSoundPair &input, FilenamesList &filenam
 *
 *******************************************************************/
 
-bool ExportSounds_CreateBanks( std::vector<ExportSoundPair> &samples, WriteStats &samples_stats, std::vector<ExportSoundPair> &music_clips, WriteStats &music_clip_stats, const char *bank_output_folder)
+bool ExportSounds_CreateBanks( std::vector<ExportSoundPair> &samples, WriteStats &samples_stats, std::vector<ExportSoundPair> &music_clips, WriteStats &music_clip_stats, const char *bank_output_folder )
 {
+samples_stats = {};
+music_clip_stats = {};
+
 FSBANK_RESULT fsbank_error_code;
 const char *fsbank_cacheDirectory = "FSBANK_CACHE";
 const int num_cpu_cores = 1;
@@ -61,8 +64,10 @@ for( auto &sample : samples )
     {
     sample_subsounds_array.push_back({});
     FSBANK_SUBSOUND &subsound = sample_subsounds_array.back();
+    //auto test = file_name_dummy.back().data();
 
     CreateSubsound( sample, file_name_dummy, file_data_dummy, file_length_dummy, subsound );
+   // std::string test = file_name_dummy.data()
     }
 
 std::vector<FSBANK_SUBSOUND> music_subsounds_array;
@@ -74,14 +79,54 @@ for( auto &clip : music_clips )
     CreateSubsound( clip, file_name_dummy, file_data_dummy, file_length_dummy, subsound );
     }
 
+//Build the banks!
 std::string sound_bank_name( bank_output_folder );
 sound_bank_name.append( "\\" ASSET_FILE_SOUND_BANK_FILENAME );
 fsbank_error_code = FSBank_Build( sample_subsounds_array.data(), 1, FSBANK_FORMAT_PCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, BANK_ENCRYPTION_KEY, sound_bank_name.c_str() );
 
+if( fsbank_error_code != FSBANK_OK )
+{
+    print_error( "ERROR: fmod FSBank %s failed to build with error code: %s ", sound_bank_name.c_str(), FSBank_ErrorString(fsbank_error_code));
+    fsbank_error_code = FSBank_Release();
+    return false;
+}
 
 std::string music_bank_name( bank_output_folder );
 music_bank_name.append( "\\" ASSET_FILE_MUSIC_BANK_FILENAME );
 fsbank_error_code = FSBank_Build( music_subsounds_array.data(), 1, FSBANK_FORMAT_PCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, BANK_ENCRYPTION_KEY, music_bank_name.c_str() );
+
+if( fsbank_error_code != FSBANK_OK )
+{
+    print_error( "ERROR: fmod FSBank %s failed to build with error code: %s ", sound_bank_name.c_str(), FSBank_ErrorString( fsbank_error_code ) );
+    fsbank_error_code = FSBank_Release();
+    return false;
+}
+
+FSBank_Release();
+
+for( auto &sample : samples )
+    {
+    print_info( "[SOUND]     %s", strip_filename( sample.str_filename_w_path.c_str() ).c_str() );
+    samples_stats.sound_samples_written++;
+    }
+
+FILE *sound_bank_file = std::fopen( sound_bank_name.c_str(), "rb" );
+std::fseek( sound_bank_file, 0, SEEK_END );
+samples_stats.written_sz = std::ftell( sound_bank_file );
+fclose( sound_bank_file );
+sound_bank_file = NULL;
+
+for( auto &clip : music_clips )
+    {
+    print_info( "[MUSIC]     %s", strip_filename( clip.str_filename_w_path.c_str() ).c_str() );
+    music_clip_stats.music_clips_written++;
+    }
+
+FILE *music_bank_file = std::fopen( music_bank_name.c_str(), "rb" );
+std::fseek( music_bank_file, 0, SEEK_END );
+music_clip_stats.written_sz = std::ftell( music_bank_file );
+std::fclose( music_bank_file );
+music_bank_file = NULL;
 
 return true;
 
@@ -131,6 +176,8 @@ file_lengths.push_back( file_length );
 output.fileDataLengths = &file_lengths.back();
 
 std::fclose( sound_file );
+
+return( true );
 
 }/* CreateSubsound() */
 
