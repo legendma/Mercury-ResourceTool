@@ -1,6 +1,3 @@
-#include <fmod_common.h>
-#include <fmod_errors.h>
-#include <fmod.h>
 #include <fsbank.h>
 #include <fsbank_errors.h>
 #include <cstdio>
@@ -8,21 +5,23 @@
 #include <vector>
 
 #include "AssetFile.hpp"
-#include "ResourceUtilities.hpp"
 #include "ExportSounds.hpp"
+#include "ResourceUtilities.hpp"
 
 
 using FilenamesList = std::vector<std::vector<const char*>>;
-using FiledatumList = std::vector<std::vector<const void*>>;
-using FileLengthsList = std::vector<unsigned int>;
 using SubsoundsList = std::vector<FSBANK_SUBSOUND>;
 
-/* bank compression level constants.  1 is highest compression, 100 is highest quality, 0 is default */
+// bank compression level constants.  1 is highest compression, 100 is highest quality, 0 is default
 #define SOUND_SAMPLE_BANK_COMPRESSION_LEVEL ( 0 )
-#define MUSIC_BANK_COMPRESSION_LEVEL ( 0 )
+#define MUSIC_BANK_COMPRESSION_LEVEL ( 0 ) 
+#define BANK_ENCRYPTION_KEY ( "DEFAULT" )
 
-static bool FileErrorChecker( const char *filepath, FILE *file_handle, const uint32_t seek_error_code, const uint32_t read_error_code, const uint32_t expected_file_length );
-static bool CreateSubsound( const ExportSoundPair &input, FilenamesList &filenames, FiledatumList &file_datas, FileLengthsList &file_lengths, FSBANK_SUBSOUND &output );
+
+static bool     BuildBank( const std::string &name, const std::vector<FSBANK_SUBSOUND> &subsounds );
+static uint32_t LogStats( const std::string &format, std::string &filename, std::vector<ExportSoundPair> &assets, WriteStats &stats );
+static void     PrepareBank( const std::vector<ExportSoundPair> &assets, std::vector<AssetFileSoundPair> &pairs, std::vector<FSBANK_SUBSOUND> &subsounds, FilenamesList &filenames );
+static bool     WritePairsToBinary( const AssetFileAssetId bank_id, const AssetFileAssetKind kind, const std::vector<AssetFileSoundPair> &pairs, AssetFileWriter *output );
 
 
 /*******************************************************************
@@ -34,203 +33,170 @@ static bool CreateSubsound( const ExportSoundPair &input, FilenamesList &filenam
 *
 *******************************************************************/
 
-bool ExportSounds_CreateBanks( std::vector<ExportSoundPair> &samples, WriteStats &samples_stats, std::vector<ExportSoundPair> &music_clips, WriteStats &music_clip_stats, const char *bank_output_folder )
+bool ExportSounds_CreateBanks( std::vector<ExportSoundPair> &samples, WriteStats &samples_stats, std::vector<ExportSoundPair> &music_clips, WriteStats &music_clip_stats, const char *bank_output_folder, AssetFileWriter *output )
 {
 samples_stats = {};
 music_clip_stats = {};
 
-FSBANK_RESULT fsbank_error_code;
 const char *fsbank_cacheDirectory = "FSBANK_CACHE";
 const int num_cpu_cores = 1;
 // TODO <jw>, pull CPU core count and pass this into the functions to enable multithreading if perf is a problem
 
-fsbank_error_code = FSBank_Init( FSBANK_FSBVERSION_FSB5, FSBANK_INIT_NORMAL, num_cpu_cores, fsbank_cacheDirectory );
-
+FSBANK_RESULT fsbank_error_code = FSBank_Init( FSBANK_FSBVERSION_FSB5, FSBANK_INIT_NORMAL, num_cpu_cores, fsbank_cacheDirectory );
 if( fsbank_error_code != FSBANK_OK )
     {
-    print_error( "ERROR: fmod FSBank failed to intiailize. %s ", FSBank_ErrorString( fsbank_error_code ) );
+    print_error( "ERROR: fmod FSBank failed to intiailize. %s \n ", FSBank_ErrorString( fsbank_error_code ) );
     fsbank_error_code = FSBank_Release();
     return false;
     }
 
-/* convert the input sound data into FSBank subsound data format.  Does not support interleaved subsounds. */
-FilenamesList file_names;
-FiledatumList file_datas;
-FileLengthsList file_lengths;
+/* convert the input sound data into FSBank subsound data format. Does not support interleaved subsounds. */
+FilenamesList filename_storage;
 
-/* create sound sample subsound array */
-std::vector<FSBANK_SUBSOUND> sample_subsounds_array;
-for( auto &sample : samples )
-    {
-    sample_subsounds_array.push_back({});
-    FSBANK_SUBSOUND &subsound = sample_subsounds_array.back();
+std::vector<FSBANK_SUBSOUND> sample_subsounds;
+std::vector<AssetFileSoundPair> sample_pairs;
+PrepareBank( samples, sample_pairs, sample_subsounds, filename_storage );
 
-    CreateSubsound( sample, file_names, file_datas, file_lengths, subsound );
-    }
-
-/* create music subsound array */
-std::vector<FSBANK_SUBSOUND> music_subsounds_array;
-for( auto &clip : music_clips )
-    {
-    music_subsounds_array.push_back( {} );
-    FSBANK_SUBSOUND &subsound = music_subsounds_array.back();
-
-    CreateSubsound( clip, file_names, file_datas, file_lengths, subsound );
-    }
+std::vector<FSBANK_SUBSOUND> music_subsounds;
+std::vector<AssetFileSoundPair> music_pairs;
+PrepareBank( music_clips, music_pairs, music_subsounds, filename_storage );
 
 /* build the banks! */
-std::string sound_bank_name( bank_output_folder );
-sound_bank_name.append( "\\" ASSET_FILE_SOUND_BANK_FILENAME );
-fsbank_error_code = FSBank_Build( sample_subsounds_array.data(), 1, FSBANK_FORMAT_FADPCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, NULL, sound_bank_name.c_str() );
-
-if( fsbank_error_code != FSBANK_OK )
+std::string samples_filename( bank_output_folder );
+samples_filename.append( "\\" ASSET_FILE_SOUND_BANK_FILENAME );
+std::string music_filename( bank_output_folder );
+music_filename.append( "\\" ASSET_FILE_MUSIC_BANK_FILENAME );
+if( !BuildBank( samples_filename, sample_subsounds )
+ || !BuildBank( music_filename,   music_subsounds ) )
     {
-    print_error( "ERROR: fmod FSBank %s failed to build with error code: %s ", sound_bank_name.c_str(), FSBank_ErrorString(fsbank_error_code));
-    fsbank_error_code = FSBank_Release();
-    return( false );
-    }
-
-std::string music_bank_name( bank_output_folder );
-music_bank_name.append( "\\" ASSET_FILE_MUSIC_BANK_FILENAME );
-fsbank_error_code = FSBank_Build( music_subsounds_array.data(), 1, FSBANK_FORMAT_FADPCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, NULL, music_bank_name.c_str() );
-
-if( fsbank_error_code != FSBANK_OK )
-    {
-    print_error( "ERROR: fmod FSBank %s failed to build with error code: %s ", sound_bank_name.c_str(), FSBank_ErrorString( fsbank_error_code ) );
-    fsbank_error_code = FSBank_Release();
     return( false );
     }
 
 FSBank_Release();
 
-for( auto &sample : samples )
+/* Write the Asset name/index data to the binary. */
+AssetFileAssetId sound_bank_asset_id = AssetFile_MakeAssetIdFromName( ASSET_FILE_SOUND_BANK_FILENAME, (uint32_t)strlen( ASSET_FILE_SOUND_BANK_FILENAME ) );
+if( !WritePairsToBinary( sound_bank_asset_id, ASSET_FILE_ASSET_KIND_SOUND_SAMPLE, sample_pairs, output ) )
     {
-    print_info( "[SOUND]     %s", strip_filename( sample.str_filename_w_path.c_str() ).c_str() );
-    samples_stats.sound_samples_written++;
+    return( false );
     }
 
-FILE *sound_bank_file = std::fopen( sound_bank_name.c_str(), "rb" );
-std::fseek( sound_bank_file, 0, SEEK_END );
-samples_stats.written_sz = std::ftell( sound_bank_file );
-fclose( sound_bank_file );
-sound_bank_file = NULL;
-
-for( auto &clip : music_clips )
+AssetFileAssetId music_bank_asset_id = AssetFile_MakeAssetIdFromName( ASSET_FILE_MUSIC_BANK_FILENAME, (uint32_t)strlen( ASSET_FILE_MUSIC_BANK_FILENAME ) );
+if( !WritePairsToBinary( music_bank_asset_id, ASSET_FILE_ASSET_KIND_SOUND_MUSIC_CLIP, music_pairs, output ) )
     {
-    print_info( "[MUSIC]     %s", strip_filename( clip.str_filename_w_path.c_str() ).c_str() );
-    music_clip_stats.music_clips_written++;
+    return( false );
     }
 
-FILE *music_bank_file = std::fopen( music_bank_name.c_str(), "rb" );
-std::fseek( music_bank_file, 0, SEEK_END );
-music_clip_stats.written_sz = std::ftell( music_bank_file );
-std::fclose( music_bank_file );
-music_bank_file = NULL;
+/* write stats */
+samples_stats.sound_samples_written  = LogStats( "[SOUND]     %s", samples_filename, samples, samples_stats );
+music_clip_stats.music_clips_written = LogStats( "[MUSIC]     %s", music_filename, music_clips, music_clip_stats );
 
 return true;
 
-}   /* ExportSounds_CreateBanks() */
+}/* ExportSounds_CreateBanks() */
 
 
 /*******************************************************************
 *
-*   CreateSubsound()
-*
-*   DESCRIPTION:
-*		creates a single subsound with no interleaving
+*   BuildBank()
 *
 *******************************************************************/
 
-static bool CreateSubsound( const ExportSoundPair &input, FilenamesList &filenames, FiledatumList &file_datas, FileLengthsList &file_lengths, FSBANK_SUBSOUND &output )
+static bool BuildBank( const std::string &name, const std::vector<FSBANK_SUBSOUND> &subsounds )
 {
-output = {};
-output.numFiles = 1;
-
-/* get file names */
-filenames.push_back({});
-auto &files = filenames.back();
-files.push_back( input.str_filename_w_path.c_str() );
-output.fileNames = filenames.back().data();
-
-/* get file data */
-const char *filepath = input.str_filename_w_path.c_str();
-FILE *sound_file = std::fopen( filepath, "rb" );
-uint32_t seek_error = std::fseek( sound_file, 0, SEEK_END );
-uint32_t file_length = std::ftell( sound_file );
-std::rewind( sound_file );
-char *file_data = (char *)malloc( file_length );
-uint32_t read_error = (uint32_t)std::fread( file_data, 1, file_length, sound_file );
-
-if( FileErrorChecker( filepath, sound_file, seek_error, read_error, file_length ) == false )
+FSBANK_RESULT fsbank_error_code = FSBank_Build( subsounds.data(), (unsigned int)subsounds.size(), FSBANK_FORMAT_FADPCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, NULL, name.c_str() );
+if( fsbank_error_code != FSBANK_OK )
     {
-    return( false );
+    print_error( "ERROR: fmod FSBank %s failed to build with error code: %s ", name.c_str(), FSBank_ErrorString( fsbank_error_code ) );
+    fsbank_error_code = FSBank_Release();
+    return false;
     }
-
-file_datas.push_back({});
-auto &data = file_datas.back();
-data.push_back( file_data );
-output.fileData = file_datas.back().data();
-
-file_lengths.push_back( file_length );
-output.fileDataLengths = &file_lengths.back();
-
-std::fclose( sound_file );
 
 return( true );
 
-}   /* CreateSubsound() */
+}   /* BuildBank() */
 
 
 /*******************************************************************
 *
-*   FileErrorChecker()
-*
-*   DESCRIPTION:
-*		reports errors openining and reading sound files. returns true if no error
+*   LogStats()
 *
 *******************************************************************/
 
-static bool FileErrorChecker(const char * filepath, FILE * file_handle, const uint32_t seek_error_code, const uint32_t read_error_code, const uint32_t expected_file_length )
+static uint32_t LogStats( const std::string &format, std::string &filename, std::vector<ExportSoundPair> &assets, WriteStats &stats )
 {
-if( file_handle == NULL
-|| seek_error_code != 0
-|| read_error_code != expected_file_length
-|| feof( file_handle ) != 0 )
+uint32_t asset_cnt = 0;
+for( auto &asset : assets )
     {
-    print_error( "The following sound or music asset had an error: %s .", filepath );
+    print_info( format.c_str(), strip_filename( asset.str_filename_w_path.c_str() ).c_str() );
+    asset_cnt++;
+    }
 
-    if( file_handle == NULL )
-        {
-        print_error( "The file was unable to be opened. Please check the path." );
-        }
+FILE *fhnd = std::fopen( filename.c_str(), "rb" );
+std::fseek( fhnd, 0, SEEK_END );
+stats.written_sz = std::ftell( fhnd );
+fclose( fhnd );
 
-    if( seek_error_code != 0 )
-        {
-        print_error( "There was an error seeking the file. The error code is: %d.", ferror( file_handle ) );
-        }
+return( asset_cnt );
 
-    if( read_error_code != 0 )
-        {
-        print_error( "There was an error reading the file or the end of file was reached." );
+}   /* LogStats() */
 
-        if( ferror( file_handle ) != 0 )
-            {
-            print_error( "The file read error: %d.", ferror( file_handle ) );
-            }
-        else if( feof( file_handle ) != 0 )
-            {
-            print_error( "End of the file was reached prematurely." );
-            print_error( "%d out of %d bytes were read.", read_error_code, expected_file_length );
-            }
-        else
-            {
-            print_error( "An unknown error occured. good luck!" );
-            }
-        }
 
-    return( false );
+/*******************************************************************
+*
+*   PrepareBank()
+*
+*******************************************************************/
+
+static void PrepareBank( const std::vector<ExportSoundPair> &assets, std::vector<AssetFileSoundPair> &pairs, std::vector<FSBANK_SUBSOUND> &subsounds, FilenamesList &filenames )
+{
+for( auto &asset : assets )
+    {
+    pairs.push_back( {} );
+    auto &pair = pairs.back();
+    pair.asset_id = AssetFile_MakeAssetIdFromName( asset.str_asset_id.c_str(), (uint32_t)asset.str_asset_id.length() );
+    pair.subsound_index = (uint32_t)subsounds.size();
+
+    /* build subsound */
+    filenames.push_back( {} );
+    auto &files = filenames.back();
+    files.push_back( asset.str_filename_w_path.c_str() );
+
+    subsounds.push_back( {} );
+    FSBANK_SUBSOUND &subsound = subsounds.back();
+    subsound.numFiles = 1;
+    subsound.fileNames = filenames.back().data();
+    }
+
+}   /* PrepareBank() */
+
+
+/*******************************************************************
+*
+*   WritePairsToBinary()
+*
+*******************************************************************/
+
+static bool WritePairsToBinary( const AssetFileAssetId bank_id, const AssetFileAssetKind kind, const std::vector<AssetFileSoundPair> &pairs, AssetFileWriter *output )
+{
+if( !AssetFile_BeginWritingAsset( bank_id, kind, output ) )
+    {
+    print_error("ERROR: The Sound bank pair data had an error in AssetFile_BeginWritingAsset. \n");
+    return false;
+    }
+
+if( !AssetFile_WriteSoundPairs( pairs.data(), (uint16_t)pairs.size(), output ) ) 
+    {
+    print_error( "ERROR: The Sound bank pair data had an error in AssetFile_WriteSoundPairs. \n" );
+    return false;
+    }
+
+if( !AssetFile_EndWritingAsset( output ) )
+    {
+    print_error( "ERROR: The Sound bank pair data had an error in AssetFile_EndWritingAsset. \n" );
+    return false;
     }
 
 return( true );
 
-}   /* FileErrorChecker() */
+}   /* WritePairsToBinary() */

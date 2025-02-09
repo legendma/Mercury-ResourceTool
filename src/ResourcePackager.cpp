@@ -640,6 +640,8 @@ for( auto &entry : visitor.asset_map )
     }
 
 asset_ids.push_back( ASSET_FILE_TEXTURE_EXTENT_ASSET_ID ); /* <MPA> This is a nasty hack to get the texture extents table to be a valid asset ID - THIS MEANS IT MUST BE PROCESSED LAST */
+asset_ids.push_back( AssetFile_MakeAssetIdFromName( ASSET_FILE_SOUND_BANK_FILENAME, (uint32_t)strlen( ASSET_FILE_SOUND_BANK_FILENAME ) ) ); /* <MPA> Pre-register the sound and music banks as assets, so we can store their sample id/index pairs. */
+asset_ids.push_back( AssetFile_MakeAssetIdFromName( ASSET_FILE_MUSIC_BANK_FILENAME, (uint32_t)strlen( ASSET_FILE_MUSIC_BANK_FILENAME ) ) );
 
 if( asset_ids.empty() )
     {
@@ -729,7 +731,7 @@ for( auto &entry : visitor.asset_map )
 if( sound_sample_pairs.size()
  || music_clip_pairs.size() )
     {
-    ExportSounds_CreateBanks( sound_sample_pairs, sound_sample_stats, music_clip_pairs, music_clip_stats, arguments->output_soundbank_folder.str );
+    ExportSounds_CreateBanks( sound_sample_pairs, sound_sample_stats, music_clip_pairs, music_clip_stats, arguments->output_soundbank_folder.str, &output_file );
     }
 	
 success = ExportTexture_WriteTextureExtents( texture_extent_map, &output_file );

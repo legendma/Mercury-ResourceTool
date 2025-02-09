@@ -650,27 +650,21 @@ return( true );
 
 /*******************************************************************
 *
-*   AssetFile_EndWritingFont()
+*   AssetFile_EndWritingAsset()
 *
 *   DESCRIPTION:
-*       Finish writing a font.
+*       Finish writing a model by setting its root node.
 *
 *******************************************************************/
 
-bool AssetFile_EndWritingFont( AssetFileWriter *output )
+bool AssetFile_EndWritingAsset( AssetFileWriter *output )
 {
-if( output->kind != ASSET_FILE_ASSET_KIND_FONT
- || !output->asset_start )
-    {
-    return( false );
-    }
-
 output->asset_start = 0;
 output->kind = ASSET_FILE_ASSET_KIND_INVALID;
 
 return( true );
 
-}   /* AssetFile_EndWritingFont() */
+}   /* AssetFile_EndWritingAsset() */
 
 
 /*******************************************************************
@@ -1377,6 +1371,68 @@ return( true );
 
 /*******************************************************************
 *
+*   AssetFile_ReadSoundPairs()
+*
+*   DESCRIPTION:
+*       Read the binary and return the sound pairs data. 
+*       Works for both sample and music pairs.
+*       
+*******************************************************************/
+
+bool AssetFile_ReadSoundPairs(  uint16_t num_pairs, AssetFileSoundPair *sound_pairs, AssetFileReader *input )
+{
+uint16_t num_elements;
+if( !AssetFile_ReadSoundPairsStorageRequirements( &num_elements, input )
+ || num_pairs < num_elements
+ || sound_pairs == NULL )
+    {
+    return(false);
+    }
+
+uint32_t read_size = sizeof(*sound_pairs) * num_elements;
+ensure ( fread_s( sound_pairs, read_size, 1, read_size,input->fhnd ) == read_size );
+
+return true;
+   
+} /* AssetFile_ReadSoundPairs() */
+
+
+/*******************************************************************
+*
+*   AssetFile_ReadSoundPairsStorageRequirements()
+*
+*   DESCRIPTION:
+*       Read the array size required for the sound paired asset ID/index data.
+*
+*******************************************************************/
+
+bool AssetFile_ReadSoundPairsStorageRequirements( uint16_t *num_elements, AssetFileReader *input )
+{
+if( ( input->kind != ASSET_FILE_ASSET_KIND_SOUND_SAMPLE
+   && input->kind != ASSET_FILE_ASSET_KIND_SOUND_MUSIC_CLIP )
+ || !input->asset_start
+ || num_elements == NULL)
+    {
+    return(false);
+    }
+
+if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+    {
+    return(false);
+    }
+
+if( fread_s( num_elements, sizeof( *num_elements ), 1, sizeof( *num_elements ), input->fhnd ) != sizeof( *num_elements ) )
+    {
+    return(false);
+    }
+
+return(true);
+
+} /* AssetFile_ReadSoundPairsStorageRequirements() */
+
+
+/*******************************************************************
+*
 *   AssetFile_ReadTextureBinary()
 *
 *   DESCRIPTION:
@@ -1702,6 +1758,39 @@ output->kind = ASSET_FILE_ASSET_KIND_INVALID;
 return( true );
 
 } /* AssetFile_WriteShader() */
+
+
+/*******************************************************************
+*
+*   AssetFile_WriteSoundPairs()
+*
+*   DESCRIPTION:
+*       Write the sound asset ID/index pair data to the asset binary.
+*       This also ends the asset writing session.
+*
+*******************************************************************/
+
+bool AssetFile_WriteSoundPairs( const AssetFileSoundPair *sound_pair, const uint16_t num_pairs, AssetFileWriter *output )
+{
+if( !output->asset_start
+ || ( output->kind != ASSET_FILE_ASSET_KIND_SOUND_SAMPLE
+   && output->kind != ASSET_FILE_ASSET_KIND_SOUND_MUSIC_CLIP ) )
+    {
+    return( false );
+    }
+
+uint32_t size_write = sizeof( *sound_pair ) * num_pairs;
+ensure( fwrite( &num_pairs, 1, sizeof( num_pairs ), output->fhnd) == sizeof( num_pairs ) ); 
+ensure( fwrite( sound_pair, 1, size_write, output->fhnd ) == size_write );
+
+output->caret = (uint32_t)ftell( output->fhnd );
+
+output->asset_start = 0;
+output->kind = ASSET_FILE_ASSET_KIND_INVALID;
+
+return(true);
+
+} /* AssetFile_WriteSoundPairs() */
 
 
 /*******************************************************************

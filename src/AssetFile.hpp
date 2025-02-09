@@ -20,6 +20,8 @@
                                     "SoundSample.fsb"
 #define ASSET_FILE_MUSIC_BANK_FILENAME \
                                     "MusicClips.fsb"
+#define ASSET_FILE_MAX_SOUND_NAME_LEN ( 256 )
+
 
 typedef struct _AssetFileNameString
     {
@@ -120,7 +122,13 @@ typedef struct _AssetFileModelMaterial
     AssetFileAssetId    textures[ ASSET_FILE_MODEL_TEXTURES_COUNT ];
                                     /* material texture maps        */
     } AssetFileModelMaterial;
-    
+
+typedef struct _AssetFileSoundPair
+    {
+    AssetFileAssetId    asset_id;       /* ID of the sound          */
+    uint32_t            subsound_index; /* index within bank        */
+    } AssetFileSoundPair; 
+
 typedef struct _AssetFileTextureExtent
     {
     AssetFileAssetId    texture_id; /* ID of the texture            */
@@ -164,9 +172,8 @@ bool   AssetFile_DescribeTexture( const uint32_t byte_size, AssetFileWriter *out
 bool   AssetFile_DescribeTexture2( const uint32_t channel_cnt, const uint32_t width, const uint32_t height, const uint32_t byte_size, AssetFileWriter *output );
 bool   AssetFile_DescribeTextureExtents( const uint16_t element_cnt, AssetFileWriter *output );
 bool   AssetFile_EndReadingAsset( AssetFileReader *input );
-bool   AssetFile_EndWritingFont( AssetFileWriter *output );
+bool   AssetFile_EndWritingAsset( AssetFileWriter *output );
 bool   AssetFile_EndWritingModel( const uint32_t root_node_element, AssetFileWriter *output );
-bool   AssetFile_EndWritingTextureExtents( AssetFileWriter *output );
 size_t AssetFile_GetWriteSize( const AssetFileWriter *output );
 bool   AssetFile_OpenForRead( const char *filename, AssetFileReader *input );
 bool   AssetFile_ReadFontGlyphs( const uint16_t glyph_capacity, AssetFileFontGlyph *glyphs, AssetFileReader *input );
@@ -178,7 +185,10 @@ bool   AssetFile_ReadModelMeshVertices( const uint32_t mesh_index, const uint32_
 bool   AssetFile_ReadModelNodes( const uint32_t node_capacity, uint32_t *node_count, AssetFileModelNode *nodes, AssetFileReader *input );
 bool   AssetFile_ReadModelStorageRequirements( uint32_t *vertex_count, uint32_t *index_count, uint32_t *mesh_count, uint32_t *node_count, uint32_t *material_count, AssetFileReader *input );
 bool   AssetFile_ReadShaderBinary( const uint32_t buffer_sz, uint32_t *read_sz, uint8_t *buffer, AssetFileReader *input );
+bool   AssetFile_ReadSoundPairs( uint16_t num_pairs, AssetFileSoundPair *sound_pairs, AssetFileReader *input );
+bool   AssetFile_ReadSoundPairsStorageRequirements( uint16_t *num_elements, AssetFileReader *input );
 bool   AssetFile_ReadShaderStorageRequirements( uint32_t *byte_count, AssetFileReader *input );
+bool   AssetFile_ReadTextureExtentsStorageRequirements( uint16_t *num_elements, AssetFileReader *input );
 bool   AssetFile_ReadTextureBinary( const uint32_t buffer_sz, uint32_t *read_sz, uint8_t *buffer, AssetFileReader *input );
 bool   AssetFile_ReadTextureStorageRequirements( uint32_t *channel_cnt, uint32_t *width, uint32_t *height, uint32_t *byte_count, AssetFileReader *input );
 bool   AssetFile_ReadTextureExtents( const uint16_t output_cnt, AssetFileTextureExtent *out_elements, AssetFileReader *input );
@@ -189,6 +199,7 @@ bool   AssetFile_WriteModelMeshIndex( const AssetFileModelIndex index, AssetFile
 bool   AssetFile_WriteModelMeshVertex( const AssetFileModelVertex *vertex, AssetFileWriter *output );
 bool   AssetFile_WriteModelNodeChildElements( const AssetFileModelIndex *element_ids, const uint32_t count, AssetFileWriter *output );
 bool   AssetFile_WriteShader( const uint8_t *blob, const uint32_t blob_size, AssetFileWriter *output );
+bool   AssetFile_WriteSoundPairs( const AssetFileSoundPair *sound_pair, const uint16_t num_pairs, AssetFileWriter *output );
 bool   AssetFile_WriteTexture( const uint8_t *image, const uint32_t image_size, AssetFileWriter *output );
 bool   AssetFile_WriteTextureExtent( const AssetFileAssetId id, const uint16_t width, const uint16_t height, AssetFileWriter *output );
 
@@ -198,12 +209,11 @@ bool   AssetFile_WriteTextureExtent( const AssetFileAssetId id, const uint16_t w
 *   AssetFile_MakeAssetIdFromName()
 *
 *   DESCRIPTION:
-*       Create a 32-bit hash asset id given the string asset id
-*       name.
+*       Create an asset id given the string asset id name.
 *
 *******************************************************************/
 
-static uint32_t inline AssetFile_MakeAssetIdFromName( const char *name, const uint32_t name_length )
+static AssetFileAssetId inline AssetFile_MakeAssetIdFromName( const char *name, const uint32_t name_length )
 {
 static const uint32_t SEED  = 0x811c9dc5;
 static const uint32_t PRIME = 0x01000193;
@@ -242,12 +252,11 @@ return( AssetFile_MakeAssetIdFromName( name, (uint32_t)strlen( name ) ) );
 *   AssetFile_MakeAssetIdFromNameString()
 *
 *   DESCRIPTION:
-*       Create a 32-bit hash asset id given the string asset id
-*       name string.
+*       Create an asset id given the string asset id name string.
 *
 *******************************************************************/
 
-static uint32_t inline AssetFile_MakeAssetIdFromNameString( const AssetFileNameString *name )
+static AssetFileAssetId inline AssetFile_MakeAssetIdFromNameString( const AssetFileNameString *name )
 {
 return( AssetFile_MakeAssetIdFromName( name->str, (uint32_t)strlen( name->str ) ) );
 

@@ -529,7 +529,7 @@ for( auto i = 0; i < glyph_cnt; i++ )
         }
     }
 
-if( !AssetFile_EndWritingFont( output ) )
+if( !AssetFile_EndWritingAsset( output ) )
     {
     print_error( "ExportFont_Export() failed to end writing a font (%s).", asset_id_str.c_str() );
     return( false );

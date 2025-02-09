@@ -113,7 +113,7 @@ for( auto &extent : extent_map )
     AssetFile_WriteTextureExtent( extent.first, extent.second.width, extent.second.height, output );
     }
 
-if( !AssetFile_EndWritingTextureExtents( output ) )
+if( !AssetFile_EndWritingAsset( output ) )
     {
     print_error( "ExportTexture_WriteTextureExtents() could not finish writing the texture extent map." );
     return( false );
