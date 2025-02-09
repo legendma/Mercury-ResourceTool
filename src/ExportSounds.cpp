@@ -79,7 +79,7 @@ for( auto &clip : music_clips )
 //Build the banks!
 std::string sound_bank_name( bank_output_folder );
 sound_bank_name.append( "\\" ASSET_FILE_SOUND_BANK_FILENAME );
-fsbank_error_code = FSBank_Build( sample_subsounds_array.data(), 1, FSBANK_FORMAT_PCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, BANK_ENCRYPTION_KEY, sound_bank_name.c_str() );
+fsbank_error_code = FSBank_Build( sample_subsounds_array.data(), 1, FSBANK_FORMAT_FADPCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, NULL, sound_bank_name.c_str() );
 
 if( fsbank_error_code != FSBANK_OK )
 {
@@ -90,7 +90,7 @@ if( fsbank_error_code != FSBANK_OK )
 
 std::string music_bank_name( bank_output_folder );
 music_bank_name.append( "\\" ASSET_FILE_MUSIC_BANK_FILENAME );
-fsbank_error_code = FSBank_Build( music_subsounds_array.data(), 1, FSBANK_FORMAT_PCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, BANK_ENCRYPTION_KEY, music_bank_name.c_str() );
+fsbank_error_code = FSBank_Build( music_subsounds_array.data(), 1, FSBANK_FORMAT_FADPCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, NULL, music_bank_name.c_str() );
 
 if( fsbank_error_code != FSBANK_OK )
 {
@@ -98,7 +98,7 @@ if( fsbank_error_code != FSBANK_OK )
     fsbank_error_code = FSBank_Release();
     return false;
 }
-
+\
 FSBank_Release();
 
 for( auto &sample : samples )

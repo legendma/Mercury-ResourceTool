@@ -17,9 +17,9 @@
 #define ASSET_FILE_BINARY_FILENAME   "AllAssets.bin"
 
 #define ASSET_FILE_SOUND_BANK_FILENAME \
-                                    "SoundSample.bank"
+                                    "SoundSample.fsb"
 #define ASSET_FILE_MUSIC_BANK_FILENAME \
-                                    "MusicClips.bank"
+                                    "MusicClips.fsb"
 
 typedef struct _AssetFileNameString
     {
