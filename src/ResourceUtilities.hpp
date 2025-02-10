@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstdarg>
 #include <cstdio>
 #include <string>
@@ -16,6 +17,9 @@ typedef struct _WriteStats
     uint32_t            sound_samples_written;
     uint32_t            music_clips_written;
     } WriteStats;
+
+
+
 
 /*******************************************************************
 *

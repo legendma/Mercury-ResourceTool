@@ -8,6 +8,7 @@
 #include "ResourceUtilities.hpp"
 #include "ExportSounds.hpp"
 
+
 using FilenamesList = std::vector<std::vector<const char*>>;
 using FiledatumList = std::vector<std::vector<const void*>>;
 using FileLengthsList = std::vector<unsigned int>;
@@ -57,8 +58,23 @@ FileLengthsList file_length_dummy;
 
 std::vector<FSBANK_SUBSOUND> sample_subsounds_array;
 //create sound sample subsound array
+
+// sound bank index/name for hashmap,  need to save this somehow then load it during sound.cpp init and udpate the component.
+typedef struct
+    {
+    uint32_t index;
+    const char *name;
+    } pair_type;
+
+std::vector<pair_type> map_pairs;
+
 for( auto &sample : samples )
     {
+    pair_type pair = {};
+    pair.index = sample_subsounds_array.size();
+    pair.name = sample.str_asset_id.c_str();
+    map_pairs.push_back( pair ); 
+
     sample_subsounds_array.push_back({});
     FSBANK_SUBSOUND &subsound = sample_subsounds_array.back();
     //auto test = file_name_dummy.back().data();
@@ -79,7 +95,7 @@ for( auto &clip : music_clips )
 //Build the banks!
 std::string sound_bank_name( bank_output_folder );
 sound_bank_name.append( "\\" ASSET_FILE_SOUND_BANK_FILENAME );
-fsbank_error_code = FSBank_Build( sample_subsounds_array.data(), 1, FSBANK_FORMAT_FADPCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, NULL, sound_bank_name.c_str() );
+fsbank_error_code = FSBank_Build( sample_subsounds_array.data(), sample_subsounds_array.size(), FSBANK_FORMAT_FADPCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, NULL, sound_bank_name.c_str());
 
 if( fsbank_error_code != FSBANK_OK )
 {
@@ -90,7 +106,7 @@ if( fsbank_error_code != FSBANK_OK )
 
 std::string music_bank_name( bank_output_folder );
 music_bank_name.append( "\\" ASSET_FILE_MUSIC_BANK_FILENAME );
-fsbank_error_code = FSBank_Build( music_subsounds_array.data(), 1, FSBANK_FORMAT_FADPCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, NULL, music_bank_name.c_str() );
+fsbank_error_code = FSBank_Build( music_subsounds_array.data(), music_subsounds_array.size(), FSBANK_FORMAT_FADPCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, NULL, music_bank_name.c_str());
 
 if( fsbank_error_code != FSBANK_OK )
 {

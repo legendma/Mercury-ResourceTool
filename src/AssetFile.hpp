@@ -20,6 +20,8 @@
                                     "SoundSample.fsb"
 #define ASSET_FILE_MUSIC_BANK_FILENAME \
                                     "MusicClips.fsb"
+#define ASSET_FILE_MAX_SOUND_NAME_LEN ( 256 )
+
 
 typedef struct _AssetFileNameString
     {
