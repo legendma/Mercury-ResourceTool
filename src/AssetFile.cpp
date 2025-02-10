@@ -11,20 +11,48 @@
 
 static const uint32_t ASSET_FILE_MAGIC = make_fourcc( 'M', 'e', 'r', 'c' );
 
-typedef struct _AssetFileHeader
+typedef struct
     {
     uint32_t            magic;      /* magic sentinel number        */
     uint32_t            table_cnt;  /* number entries in table      */
     } AssetFileHeader;
 
-typedef struct _AssetFileTableRow
+typedef struct
     {
     AssetFileAssetId    id;         /* asset ID hash                */
     AssetFileAssetKind  kind;       /* type of asset                */
     uint32_t            starts_at;  /* file offset to start of asset*/
     } AssetFileTableRow;
 
-typedef struct _ModelHeader
+typedef struct
+    {
+    uint16_t            texture_width;
+                                    /* texture extent width         */
+    uint16_t            texture_height;
+                                    /* texture extent height        */
+    uint16_t            glyph_cnt;  /* number glyphs in font        */
+    uint32_t            texture_sz; /* texture data byte count      */
+    uint32_t            glyphs_starts_at;
+                                    /* file offset to glyph data    */
+    uint32_t            texture_starts_at;
+                                    /* file offset to texture data  */
+    } FontHeader;
+
+typedef struct
+    {
+    uint8_t             glyph;      /* glyph code                   */
+    uint16_t            u0;         /* uv top-left x (pixels)       */
+    uint16_t            v0;         /* uv top-left y (pixels)       */
+    uint16_t            u1;         /* uv bottom-right x (pixels)   */
+    uint16_t            v1;         /* uv bottom-right y (pixels)   */
+    float               h_advance;  /* pen horizontal advancement   */
+    float               pen_offset_x;
+                                    /* horz offset from pen position*/
+    float               pen_offset_y;
+                                    /* vert offset from pen position*/
+    } FontGlyphHeader;
+
+typedef struct
     {
     uint32_t            node_count; /* number of nodes              */
     uint32_t            mesh_count; /* number of meshes             */
@@ -38,20 +66,20 @@ typedef struct _ModelHeader
                                     /* number of indices in model   */
     } ModelHeader;
 
-typedef struct _ModelMaterialHeader
+typedef struct
     {
     AssetFileModelMaterialBits
                         map_bits;   /* present texture maps         */
     } ModelMaterialHeader;
 
-typedef struct _ModelMeshHeader
+typedef struct
     {
     uint32_t            vertex_cnt; /* number of vertices           */
     uint32_t            index_cnt;  /* number of indices            */
     uint32_t            material;   /* material element index       */
     } ModelMeshHeader;
 
-typedef struct _ModelNodeHeader
+typedef struct
     {
     uint32_t            node_count; /* number of child nodes        */
     uint32_t            mesh_count; /* number of child meshes       */
@@ -59,19 +87,19 @@ typedef struct _ModelNodeHeader
                                     /* row major 4x4 matrix         */
     } ModelNodeHeader;
 
-typedef struct _ModelTableRow
+typedef struct
     {
     AssetFileModelElementKind
                         kind;       /* model element kind           */
     uint32_t            starts_at;  /* file offset to element start */
     } ModelTableRow;
 
-typedef struct _ShaderHeader
+typedef struct
     {
     uint32_t            byte_size;  /* byte code blob size          */
     } ShaderHeader;
 
-typedef struct _TextureHeader
+typedef struct
     {
     uint32_t            channel_cnt;/* number of color channels     */
     uint32_t            width;      /* image width                  */
@@ -79,7 +107,7 @@ typedef struct _TextureHeader
     uint32_t            byte_size;  /* compressed image blob size   */
     } TextureHeader;
 
-typedef struct _TextureExtentHeader
+typedef struct
     {
     uint16_t            texture_cnt;/* number of textures in table  */
     } TextureExtentHeader;
@@ -298,6 +326,42 @@ output->caret     = (uint32_t)ftell( output->fhnd );
 return( true );
 
 } /* AssetFile_CreateForWrite() */
+
+
+/*******************************************************************
+*
+*   AssetFile_DescribeFont()
+*
+*   DESCRIPTION:
+*       Provide the details about a font being written.
+*
+*******************************************************************/
+
+bool AssetFile_DescribeFont( const uint16_t texture_width, const uint16_t texture_height, const uint32_t texture_sz, const uint8_t *pixels, const uint16_t glyph_cnt, const uint8_t *glyph_codes, AssetFileWriter *output )
+{
+if( output->kind != ASSET_FILE_ASSET_KIND_FONT
+|| !output->asset_start
+|| fseek( output->fhnd, output->asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+FontHeader header = {};
+header.texture_height    = texture_width;
+header.texture_height    = texture_height;
+header.glyph_cnt         = glyph_cnt;
+header.texture_sz        = texture_sz;
+header.texture_starts_at = output->caret + sizeof( FontHeader );
+header.glyphs_starts_at  = header.texture_starts_at + texture_sz;
+
+ensure( fwrite( &header, 1, sizeof( header ), output->fhnd ) == sizeof( header ) );
+ensure( fwrite( pixels, 1, texture_sz, output->fhnd ) == texture_sz );
+
+output->caret = (uint32_t)ftell( output->fhnd );
+
+return( true );
+
+} /* AssetFile_DescribeFont() */
 
 
 /*******************************************************************
@@ -580,6 +644,31 @@ return( true );
 
 /*******************************************************************
 *
+*   AssetFile_EndWritingFont()
+*
+*   DESCRIPTION:
+*       Finish writing a font.
+*
+*******************************************************************/
+
+bool AssetFile_EndWritingFont( AssetFileWriter *output )
+{
+if( output->kind != ASSET_FILE_ASSET_KIND_FONT
+ || !output->asset_start )
+    {
+    return( false );
+    }
+
+output->asset_start = 0;
+output->kind = ASSET_FILE_ASSET_KIND_INVALID;
+
+return( true );
+
+}   /* AssetFile_EndWritingFont() */
+
+
+/*******************************************************************
+*
 *   AssetFile_EndWritingModel()
 *
 *   DESCRIPTION:
@@ -632,7 +721,7 @@ return( true );
 *   AssetFile_EndWritingTextureExtents()
 *
 *   DESCRIPTION:
-*       Finish writing a model by setting its root node.
+*       Finish writing texture extents.
 *
 *******************************************************************/
 
@@ -1278,6 +1367,41 @@ if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof
 return( true );
 
 } /* AssetFile_ReadTextureExtentsStorageRequirements() */
+
+
+/*******************************************************************
+*
+*   AssetFile_WriteFontGlyph()
+*
+*   DESCRIPTION:
+*       Write a font glyph's character data.
+*
+*******************************************************************/
+
+bool AssetFile_WriteFontGlyph( const uint8_t glyph, const uint16_t u0, const uint16_t v0, const uint16_t u1, const uint16_t v1, const float pen_dx, const float pen_dy, const float pen_xadvance, AssetFileWriter *output )
+{
+if( output->kind != ASSET_FILE_ASSET_KIND_FONT
+ || !output->asset_start )
+    {
+    return( false );
+    }
+
+FontGlyphHeader header = {};
+header.glyph        = glyph;
+header.u0           = u0;
+header.v0           = v0;
+header.u1           = u1;
+header.v1           = v1;
+header.h_advance    = pen_xadvance;
+header.pen_offset_x = pen_dx;
+header.pen_offset_y = pen_dy;
+
+ensure( fwrite( &header, 1, sizeof( header ), output->fhnd ) == sizeof( header ) );
+output->caret = (uint32_t)ftell( output->fhnd );
+
+return( true );
+
+}   /* AssetFile_WriteFontGlyph() */
 
 
 /*******************************************************************

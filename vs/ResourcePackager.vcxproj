@@ -151,6 +151,7 @@ xcopy /y /i "$(ProjectDir)"..\..\..\ots\fmod\lib\x64\fsbank.dll "$(TargetDir)\"<
   <ItemGroup>
     <ClCompile Include="..\src\AssetFile.cpp" />
     <ClCompile Include="..\src\cJSON\cjson.c" />
+    <ClCompile Include="..\src\ExportFont.cpp" />
     <ClCompile Include="..\src\ExportModel.cpp" />
     <ClCompile Include="..\src\ExportShader.cpp" />
     <ClCompile Include="..\src\ExportSounds.cpp" />
@@ -160,6 +161,7 @@ xcopy /y /i "$(ProjectDir)"..\..\..\ots\fmod\lib\x64\fsbank.dll "$(TargetDir)\"<
   <ItemGroup>
     <ClInclude Include="..\src\AssetFile.hpp" />
     <ClInclude Include="..\src\cJSON\cjson.h" />
+    <ClInclude Include="..\src\ExportFont.hpp" />
     <ClInclude Include="..\src\ExportModel.hpp" />
     <ClInclude Include="..\src\ExportShader.hpp" />
     <ClInclude Include="..\src\ExportSounds.hpp" />

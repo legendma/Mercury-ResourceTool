@@ -1,3 +1,6 @@
+#include <fmod_common.h>
+#include <fmod_errors.h>
+#include <fmod.h>
 #include <fsbank.h>
 #include <fsbank_errors.h>
 #include <cstdio>
@@ -8,15 +11,15 @@
 #include "ResourceUtilities.hpp"
 #include "ExportSounds.hpp"
 
+
 using FilenamesList = std::vector<std::vector<const char*>>;
 using FiledatumList = std::vector<std::vector<const void*>>;
 using FileLengthsList = std::vector<unsigned int>;
 using SubsoundsList = std::vector<FSBANK_SUBSOUND>;
 
-// bank compression level constants.  1 is highest compression, 100 is highest quality, 0 is default
+/* bank compression level constants.  1 is highest compression, 100 is highest quality, 0 is default */
 #define SOUND_SAMPLE_BANK_COMPRESSION_LEVEL ( 0 )
-#define MUSIC_BANK_COMPRESSION_LEVEL ( 0 ) 
-#define BANK_ENCRYPTION_KEY ( "DEFAULT" )
+#define MUSIC_BANK_COMPRESSION_LEVEL ( 0 )
 
 static bool FileErrorChecker( const char *filepath, FILE *file_handle, const uint32_t seek_error_code, const uint32_t read_error_code, const uint32_t expected_file_length );
 static bool CreateSubsound( const ExportSoundPair &input, FilenamesList &filenames, FiledatumList &file_datas, FileLengthsList &file_lengths, FSBANK_SUBSOUND &output );
@@ -50,54 +53,53 @@ if( fsbank_error_code != FSBANK_OK )
     return false;
     }
 
-// convert the input sound data into FSBank subsound data format. Does not support interleaved subsounds.
-FilenamesList file_name_dummy;  //dummy
-FiledatumList file_data_dummy;  //dummy
-FileLengthsList file_length_dummy;
+/* convert the input sound data into FSBank subsound data format.  Does not support interleaved subsounds. */
+FilenamesList file_names;
+FiledatumList file_datas;
+FileLengthsList file_lengths;
 
+/* create sound sample subsound array */
 std::vector<FSBANK_SUBSOUND> sample_subsounds_array;
-//create sound sample subsound array
 for( auto &sample : samples )
     {
     sample_subsounds_array.push_back({});
     FSBANK_SUBSOUND &subsound = sample_subsounds_array.back();
-    //auto test = file_name_dummy.back().data();
 
-    CreateSubsound( sample, file_name_dummy, file_data_dummy, file_length_dummy, subsound );
-   // std::string test = file_name_dummy.data()
+    CreateSubsound( sample, file_names, file_datas, file_lengths, subsound );
     }
 
+/* create music subsound array */
 std::vector<FSBANK_SUBSOUND> music_subsounds_array;
-    //create music subsound array
 for( auto &clip : music_clips )
     {
     music_subsounds_array.push_back( {} );
     FSBANK_SUBSOUND &subsound = music_subsounds_array.back();
-    CreateSubsound( clip, file_name_dummy, file_data_dummy, file_length_dummy, subsound );
+
+    CreateSubsound( clip, file_names, file_datas, file_lengths, subsound );
     }
 
-//Build the banks!
+/* build the banks! */
 std::string sound_bank_name( bank_output_folder );
 sound_bank_name.append( "\\" ASSET_FILE_SOUND_BANK_FILENAME );
-fsbank_error_code = FSBank_Build( sample_subsounds_array.data(), 1, FSBANK_FORMAT_PCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, BANK_ENCRYPTION_KEY, sound_bank_name.c_str() );
+fsbank_error_code = FSBank_Build( sample_subsounds_array.data(), 1, FSBANK_FORMAT_FADPCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, NULL, sound_bank_name.c_str() );
 
 if( fsbank_error_code != FSBANK_OK )
-{
+    {
     print_error( "ERROR: fmod FSBank %s failed to build with error code: %s ", sound_bank_name.c_str(), FSBank_ErrorString(fsbank_error_code));
     fsbank_error_code = FSBank_Release();
-    return false;
-}
+    return( false );
+    }
 
 std::string music_bank_name( bank_output_folder );
 music_bank_name.append( "\\" ASSET_FILE_MUSIC_BANK_FILENAME );
-fsbank_error_code = FSBank_Build( music_subsounds_array.data(), 1, FSBANK_FORMAT_PCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, BANK_ENCRYPTION_KEY, music_bank_name.c_str() );
+fsbank_error_code = FSBank_Build( music_subsounds_array.data(), 1, FSBANK_FORMAT_FADPCM, FSBANK_BUILD_DEFAULT, SOUND_SAMPLE_BANK_COMPRESSION_LEVEL, NULL, music_bank_name.c_str() );
 
 if( fsbank_error_code != FSBANK_OK )
-{
+    {
     print_error( "ERROR: fmod FSBank %s failed to build with error code: %s ", sound_bank_name.c_str(), FSBank_ErrorString( fsbank_error_code ) );
     fsbank_error_code = FSBank_Release();
-    return false;
-}
+    return( false );
+    }
 
 FSBank_Release();
 
@@ -127,7 +129,7 @@ music_bank_file = NULL;
 
 return true;
 
-}/* ExportSounds_CreateBanks() */
+}   /* ExportSounds_CreateBanks() */
 
 
 /*******************************************************************
@@ -144,13 +146,13 @@ static bool CreateSubsound( const ExportSoundPair &input, FilenamesList &filenam
 output = {};
 output.numFiles = 1;
 
-// get file names
+/* get file names */
 filenames.push_back({});
 auto &files = filenames.back();
 files.push_back( input.str_filename_w_path.c_str() );
 output.fileNames = filenames.back().data();
 
-// get file data
+/* get file data */
 const char *filepath = input.str_filename_w_path.c_str();
 FILE *sound_file = std::fopen( filepath, "rb" );
 uint32_t seek_error = std::fseek( sound_file, 0, SEEK_END );
@@ -161,7 +163,7 @@ uint32_t read_error = (uint32_t)std::fread( file_data, 1, file_length, sound_fil
 
 if( FileErrorChecker( filepath, sound_file, seek_error, read_error, file_length ) == false )
     {
-    return false;
+    return( false );
     }
 
 file_datas.push_back({});
@@ -176,7 +178,7 @@ std::fclose( sound_file );
 
 return( true );
 
-}/* CreateSubsound() */
+}   /* CreateSubsound() */
 
 
 /*******************************************************************
@@ -190,37 +192,45 @@ return( true );
 
 static bool FileErrorChecker(const char * filepath, FILE * file_handle, const uint32_t seek_error_code, const uint32_t read_error_code, const uint32_t expected_file_length )
 {
-    if( file_handle == NULL || seek_error_code != 0 || read_error_code != expected_file_length || feof(file_handle) != 0 )
+if( file_handle == NULL
+|| seek_error_code != 0
+|| read_error_code != expected_file_length
+|| feof( file_handle ) != 0 )
     {
-        print_error( "The following sound or music asset had an error:  %s ", filepath );
+    print_error( "The following sound or music asset had an error: %s .", filepath );
 
-        if( file_handle == NULL )
+    if( file_handle == NULL )
         {
-            print_error( "The file was unable to be opened. Please check the path");
-            return false;
+        print_error( "The file was unable to be opened. Please check the path." );
         }
-        if( seek_error_code != 0 )
-        {
-            print_error( "There was an error seeking the file. The error code is: %s", ferror( file_handle ) );
-            return false;
-        }
-        if( read_error_code != 0 )
-        {
-            print_error( "There was an error reading the file or the end of file was reached." );
 
-            if( ferror( file_handle ) != NULL )
-            {
-                print_error("The file read error: %s", ferror( file_handle ));
-            }
-            else if (feof( file_handle ) != 0 )
-            {
-                print_error( "The end of file was reached prematurely" );
-                print_error( "%d %s %d %s", read_error_code, " out of ", expected_file_length, " bytes were read." );
-            }
-            else print_error( "An unknown error occured. good luck!" );
-            return false;         
+    if( seek_error_code != 0 )
+        {
+        print_error( "There was an error seeking the file. The error code is: %d.", ferror( file_handle ) );
         }
+
+    if( read_error_code != 0 )
+        {
+        print_error( "There was an error reading the file or the end of file was reached." );
+
+        if( ferror( file_handle ) != 0 )
+            {
+            print_error( "The file read error: %d.", ferror( file_handle ) );
+            }
+        else if( feof( file_handle ) != 0 )
+            {
+            print_error( "End of the file was reached prematurely." );
+            print_error( "%d out of %d bytes were read.", read_error_code, expected_file_length );
+            }
+        else
+            {
+            print_error( "An unknown error occured. good luck!" );
+            }
+        }
+
+    return( false );
     }
 
-    return true;
-}/* FileErrorChecker() */
+return( true );
+
+}   /* FileErrorChecker() */

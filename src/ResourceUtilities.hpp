@@ -1,12 +1,16 @@
 #pragma once
 
+#include <cassert>
 #include <cstdarg>
 #include <cstdio>
+#include <memory>
 #include <string>
+#include <vector>
 
 typedef struct _WriteStats
     {
     size_t              written_sz;
+    uint32_t            fonts_written;
     uint32_t            models_written;
     uint32_t            materials_written;
     uint32_t            meshes_written;
@@ -16,6 +20,71 @@ typedef struct _WriteStats
     uint32_t            sound_samples_written;
     uint32_t            music_clips_written;
     } WriteStats;
+
+using free_signature = void(*)( void * );
+template <typename T> struct free_ptr : std::unique_ptr<T, free_signature>
+{
+    free_ptr( void *ptr ) : std::unique_ptr<T, free_signature>( static_cast<T *>( ptr ), std::free ) {}
+};
+
+template <typename T> struct dyn_array : std::vector<T>
+{
+    dyn_array( size_t size ) { this->resize( size ); std::memset( this->data(), 0, sizeof( T ) * this->size() ); }
+};
+
+/*******************************************************************
+*
+*   char_is_letter_lowercase
+*
+*   DESCRIPTION:
+*       Is the given character a lower-case letter?
+*
+*******************************************************************/
+
+#define char_is_letter_lowercase( _char )                           \
+    ( (_char) >= 0x61                                               \
+   && (_char) <= 0x7a )
+
+
+/*******************************************************************
+*
+*   char_is_letter_uppercase
+*
+*   DESCRIPTION:
+*       Is the given character an upper-case letter?
+*
+*******************************************************************/
+
+#define char_is_letter_uppercase( _char )                           \
+    ( (_char) >= 0x41                                               \
+   && (_char) <= 0x5a )
+
+
+/*******************************************************************
+*
+*   char_make_lowercase
+*
+*   DESCRIPTION:
+*       Convert the given uppercase character to lowercase.
+*
+*******************************************************************/
+
+#define char_make_lowercase( _upper ) \
+    ( (_upper) + 0x20 )
+
+
+/*******************************************************************
+*
+*   char_make_uppercase
+*
+*   DESCRIPTION:
+*       Convert the given lowercase character to uppercase.
+*
+*******************************************************************/
+
+#define char_make_uppercase( _lower ) \
+    ( (_lower) - 0x20 )
+
 
 /*******************************************************************
 *
@@ -125,3 +194,62 @@ if( last_slash != std::string::npos )
 return( ret );
 
 } /* strip_filename() */
+
+
+/*******************************************************************
+*
+*   str_contains_str()
+*
+*   DESCRIPTION:
+*       Does the given string contain the search string?
+*
+*******************************************************************/
+
+static __inline bool str_contains_str( const char *str, const bool case_insensitive, const char *search )
+{
+if( !search
+ || search[ 0 ] == 0 )
+    {
+    assert( false );
+    return( false );
+    }
+
+int search_i = 0;
+for( int i = 0; str[ i ] != 0; i++ )
+    {
+    char this_char = str[ i ];
+    char that_char = search[ search_i ];
+    bool matches = ( this_char == that_char );
+
+    /* handle case insensitivety */
+    if( !matches
+     && case_insensitive )
+        {
+        if( char_is_letter_lowercase( that_char ) )
+            {
+            that_char = char_make_uppercase( that_char );
+            matches = ( this_char == that_char );
+            }
+        else if( char_is_letter_uppercase( that_char ) )
+            {
+            that_char = char_make_lowercase( that_char );
+            matches = ( this_char == that_char );
+            }
+        }
+
+    if( !matches )
+        {
+        search_i = 0;
+        continue;
+        }
+
+    search_i++;
+    if( search[ search_i ] == 0 )
+        {
+        return( true );
+        }
+    }
+
+return( false );
+
+} /* str_contains_str() */

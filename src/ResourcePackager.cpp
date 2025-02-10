@@ -10,10 +10,12 @@
 #include <sstream>
 #include <unordered_map>
 #include <vector>
+#include <windows.h>
 #include <io.h>
 
 #include "cjson.h"
 #include "AssetFile.hpp"
+#include "ExportFont.hpp"
 #include "ExportModel.hpp"
 #include "ExportSounds.hpp"
 //#include "ExportShader.hpp"
@@ -25,30 +27,20 @@
 #define ARGUMENT_OUTPUT_BINARY      "-o"
 #define ARGUMENT_ASSET_ROOT         "-r"
 #define ARGUMENT_SOUND_BANK_FOLDER  "-sb"
+#define ARGUMENT_INPUT_FONTS_FOLDER "-f"
 
-typedef struct _ProgramArgumentsDefinition
+typedef struct
     {
     bool                is_valid;
-    char                filename[ MAX_ARGUMENT_LENGTH ];
-    } ProgramArgumentsDefinition;
+    char                str[ MAX_ARGUMENT_LENGTH ];
+    } GenericArgumentString;
 
-typedef struct _ProgramArgumentsOutput
-    {
-    bool                is_valid;
-    char                filename[ MAX_ARGUMENT_LENGTH ];
-    } ProgramArgumentsOutput;
-
-typedef struct _ProgramArgumentsAssetsRoot
-    {
-    bool                is_valid;
-    char                foldername[ MAX_ARGUMENT_LENGTH ];
-    } ProgramArgumentsAssetsRoot;
-
-typedef struct _ProgramArgumentsSoundBankFolder
-    {
-    bool                is_valid;
-    char                foldername[ MAX_ARGUMENT_LENGTH ];
-    } ProgramArgumentsSoundBankFolder;
+using ProgramArgumentsDefinition      = GenericArgumentString;
+using ProgramArgumentsOutput          = GenericArgumentString;
+using ProgramArgumentsOutputFolder    = GenericArgumentString;
+using ProgramArgumentsAssetsRoot      = GenericArgumentString;
+using ProgramArgumentsSoundBankFolder = GenericArgumentString;
+using ProgramArgumentsFontsFolder     = GenericArgumentString;
 
 typedef struct _ProgramArguments
     {
@@ -56,10 +48,14 @@ typedef struct _ProgramArguments
                         definition;
     ProgramArgumentsOutput
                         output_binary;
+    ProgramArgumentsOutputFolder
+                        output_binary_folder;
     ProgramArgumentsAssetsRoot
                         assets_folder;
     ProgramArgumentsSoundBankFolder
                         output_soundbank_folder;
+    ProgramArgumentsFontsFolder
+                        input_fonts_folder;
     } ProgramArguments;
 
 typedef struct _ParseDefinitionState
@@ -74,7 +70,7 @@ static size_t get_file_char_size( const char *filename );
 static void parse_args( int argc, char **argv, ProgramArguments *arguments );
 static bool process_args( const ProgramArguments *arguments );
 static bool read_json_as_string( const char *filename, const size_t sz, char *out );
-static bool visit_all_definition_assets( const cJSON *assets, const char *asset_folder, _DefinitionVisitor *visitor );
+static bool visit_all_definition_assets( const cJSON *assets, const char *asset_folder, const char *input_font_folder, _DefinitionVisitor *visitor );
 
 typedef struct _DefinitionVisitor
     {
@@ -85,9 +81,56 @@ typedef struct _DefinitionVisitor
         std::string     filename;
         std::string     stripped_filename;
         std::string     asset_id_str;
+        std::string     font_glyphs;
+        int             font_point_sz;
         //std::string     shader_entry_point;
 
         } AssetDescriptor;
+
+
+    /***************************************************************
+    *
+    *   VisitFont()
+    *
+    *   DESCRIPTION:
+    *       Tabulate the font asset in the descriptor JSON.
+    *
+    ***************************************************************/
+
+    virtual void VisitFont( const char *asset_id, const char *filename, const int point_size, const char *glyphs )
+    {
+    std::string stripped = strip_filename( filename );
+    std::stringstream ss;
+    ss << point_size
+       << "_"
+       << stripped;
+
+    std::string point_size_filename = ss.str();
+    if( std::find( seen_filenames.begin(), seen_filenames.end(), point_size_filename ) != seen_filenames.end() )
+        {
+        print_warning( "Found duplicate filename (%s).  This time as FONT.  Ignoring (%s)...", stripped, point_size_filename );
+        return;
+        }
+
+    seen_filenames.push_back( point_size_filename );
+
+    AssetFileAssetId id = AssetFile_MakeAssetIdFromName( asset_id, (uint32_t)strlen( asset_id ) );
+    if( asset_map.find( id ) != asset_map.end() )
+        {
+        print_warning( "Found duplicate asset name (%s).  This time as FONT.  Overwriting with (%s)...", asset_id, point_size_filename );
+        }
+
+    AssetDescriptor descriptor = {};
+    descriptor.kind              = ASSET_FILE_ASSET_KIND_FONT;
+    descriptor.filename          = std::string( filename );
+    descriptor.stripped_filename = stripped;
+    descriptor.asset_id_str      = std::string( asset_id );
+    descriptor.font_point_sz     = point_size;
+    descriptor.font_glyphs       = std::string( glyphs );
+    
+    asset_map[ id ] = descriptor;
+
+    }   /* VisitFont() */
 
 
     /***************************************************************
@@ -124,7 +167,7 @@ typedef struct _DefinitionVisitor
     
     asset_map[ id ] = descriptor;
 
-    } /* VisitModel() */
+    }   /* VisitModel() */
 
 
     /***************************************************************
@@ -161,7 +204,7 @@ typedef struct _DefinitionVisitor
 
     asset_map[ id ] = descriptor;
 
-    } /* VisitMusicClip() */
+    }   /* VisitMusicClip() */
 
 
     ///***************************************************************
@@ -199,7 +242,7 @@ typedef struct _DefinitionVisitor
 
     //asset_map[ id ] = descriptor;
 
-    //} /* VisitShader() */
+    //}   /* VisitShader() */
 
 
     /***************************************************************
@@ -236,7 +279,7 @@ typedef struct _DefinitionVisitor
 
     asset_map[ id ] = descriptor;
 
-    } /* VisitSoundSample() */
+    }   /* VisitSoundSample() */
 
 
     /***************************************************************
@@ -272,7 +315,7 @@ typedef struct _DefinitionVisitor
 
     asset_map[ id ] = descriptor;
 
-    } /* VisitTexture() */
+    }   /* VisitTexture() */
 
 
     /***************************************************************
@@ -317,62 +360,76 @@ typedef struct _DefinitionVisitor
 int main( int argc, char **argv )
 {
 print_info( "Starting...\n" );
-clock_t start_time = clock();
 
-static ProgramArguments arguments;
-if( argc <= 1 )
+try
     {
-    printf( "Usage: ResourcePackager.exe [-d FILENAME]... [-o FILENAME]... [-r PATH]... \n" );
-    printf( "\tParse and package assets to binary file.\n\n" );
-    printf( "Options:\n" );
-    printf( "\t-d FILENAME   Filename with path to input .json file which lists the assets to be packaged.\n" );
-    printf( "\t-o PATH       Folder to write binary output file.\n" );
-    printf( "\t-r PATH       Folder which is the root of assets defined in definition file.\n" );
-    printf( "\t-sb PATH      Folder which to output the sound bank files.\n" );
+    clock_t start_time = clock();
 
-    return( 0 );
+    static ProgramArguments arguments;
+    if( argc <= 1 )
+        {
+        printf( "Usage: ResourcePackager.exe [-d FILENAME]... [-o FILENAME]... [-r PATH]... \n" );
+        printf( "\tParse and package assets to binary file.\n\n" );
+        printf( "Options:\n" );
+        printf( "\t-d FILENAME   Filename with path to input .json file which lists the assets to be packaged.\n" );
+        printf( "\t-o PATH       Folder to write binary output file.\n" );
+        printf( "\t-r PATH       Folder which is the root of assets defined in definition file.\n" );
+        printf( "\t-sb PATH      Folder which to output the sound bank files.\n" );
+
+        return( 0 );
+        }
+
+    parse_args( argc, argv, &arguments );
+
+    bool has_error = false;
+    if( !arguments.definition.is_valid )
+        {
+        has_error = true;
+        print_error( "No input definition file provided. (%s)", ARGUMENT_INPUT_DEFINITION );
+        }
+
+    if( !arguments.output_binary.is_valid )
+        {
+        has_error = true;
+        print_error( "No output filename provided. (%s)", ARGUMENT_OUTPUT_BINARY );
+        }
+
+    if( !arguments.assets_folder.is_valid )
+        {
+        has_error = true;
+        print_error( "No asset root folder name. (%s)", ARGUMENT_ASSET_ROOT );
+        }
+
+    if( !arguments.output_soundbank_folder.is_valid )
+        {
+        has_error = true;
+        print_error( "No soundbank folder name. (%s)", ARGUMENT_SOUND_BANK_FOLDER );
+        }
+
+    if( !arguments.input_fonts_folder.is_valid )
+        {
+        has_error = true;
+        print_error( "No input font folder name. (%s)", ARGUMENT_INPUT_FONTS_FOLDER );
+        }
+
+    if( !has_error )
+        {
+        has_error = !process_args( &arguments );
+        }
+
+    if( has_error )
+        {
+        return( -1 );
+        }
+
+    clock_t end_time = clock();
+    float final_elapsed_time = ( (float)end_time - (float)start_time ) / (float)CLOCKS_PER_SEC;
+    print_info( "Finished!  Elapsed time: %.2f seconds.", final_elapsed_time );
     }
-
-parse_args( argc, argv, &arguments );
-
-bool has_error = false;
-if( !arguments.definition.is_valid )
+catch( ... )
     {
-    has_error = true;
-    print_error( "No input definition file provided. (%s)", ARGUMENT_INPUT_DEFINITION );
+    print_error( "An unknown exception occurred!!!  Try putting Sleep( 20000 ) at the top of main() and attaching a debugger to the running process." );
     }
-
-if( !arguments.output_binary.is_valid )
-    {
-    has_error = true;
-    print_error( "No output filename provided. (%s)", ARGUMENT_OUTPUT_BINARY );
-    }
-
-if( !arguments.assets_folder.is_valid )
-    {
-    has_error = true;
-    print_error( "No asset root folder name. (%s)", ARGUMENT_ASSET_ROOT );
-    }
-
-if( !arguments.output_soundbank_folder.is_valid )
-    {
-    has_error = true;
-    print_error( "No soundbank folder name. (%s)", ARGUMENT_SOUND_BANK_FOLDER );
-    }
-
-if( !has_error )
-    {
-    has_error = !process_args( &arguments );
-    }
-
-if( has_error )
-    {
-    return( -1 );
-    }
-
-clock_t end_time = clock();
-float final_elapsed_time = ( (float)end_time - (float)start_time ) / (float)CLOCKS_PER_SEC;
-print_info( "Finished!  Elapsed time: %.2f seconds.", final_elapsed_time );
 
 return( 0 );
 
@@ -442,10 +499,11 @@ return( ret );
 
 static void parse_args( int argc, char **argv, ProgramArguments *arguments )
 {
-typedef struct _ArgumentExpectations
+typedef struct
     {
     bool                is_setting_definition;
     bool                is_setting_asset_root;
+    bool                is_setting_input_fonts_folder;
     bool                is_setting_output_binary;
     bool                is_setting_output_bank_folder;
     } ArgumentExpectations;
@@ -480,31 +538,41 @@ for( int i = 0; i < argc; i++ )
         expectation = {};
         expectation.is_setting_output_bank_folder = true;
         }
+    else if( strcmp( temp_argument, ARGUMENT_INPUT_FONTS_FOLDER ) == 0 )
+        {
+        expectation = {};
+        expectation.is_setting_input_fonts_folder = true;
+        }
     else
         {
         if( expectation.is_setting_asset_root )
             {
-            strcpy_s( arguments->assets_folder.foldername, sizeof( arguments->assets_folder.foldername ), temp_argument );
+            strcpy_s( arguments->assets_folder.str, sizeof( arguments->assets_folder.str ), temp_argument );
             arguments->assets_folder.is_valid = ( strlen( temp_argument ) > 0 );
             }
         else if( expectation.is_setting_definition )
             {
-            strcpy_s( arguments->definition.filename, sizeof( arguments->definition.filename ), temp_argument );
+            strcpy_s( arguments->definition.str, sizeof( arguments->definition.str ), temp_argument );
             arguments->definition.is_valid = ( strlen( temp_argument ) > 0 );
             }
         else if( expectation.is_setting_output_binary )
             {
-            sprintf_s( arguments->output_binary.filename, sizeof( arguments->output_binary.filename ), "%s\\%s", temp_argument, ASSET_FILE_BINARY_FILENAME );
+            sprintf_s( arguments->output_binary.str, sizeof( arguments->output_binary.str ), "%s\\%s", temp_argument, ASSET_FILE_BINARY_FILENAME );
+            strcpy_s( arguments->output_binary_folder.str, sizeof( arguments->output_binary_folder.str ), temp_argument );
             arguments->output_binary.is_valid = ( strlen( temp_argument ) > 0 );
             }
         else if( expectation.is_setting_output_bank_folder )
             {
-            strcpy_s( arguments->output_soundbank_folder.foldername, sizeof( arguments->output_soundbank_folder.foldername ), temp_argument );
+            strcpy_s( arguments->output_soundbank_folder.str, sizeof( arguments->output_soundbank_folder.str ), temp_argument );
             arguments->output_soundbank_folder.is_valid = ( strlen( temp_argument ) > 0 );
+            }
+        else if( expectation.is_setting_input_fonts_folder )
+            {
+            strcpy_s( arguments->input_fonts_folder.str, sizeof( arguments->input_fonts_folder.str ), temp_argument );
+            arguments->input_fonts_folder.is_valid = ( strlen( temp_argument ) > 0 );
             }
         }
     }
-
 
 } /* parse_args() */
 
@@ -520,13 +588,13 @@ for( int i = 0; i < argc; i++ )
 
 static bool process_args( const ProgramArguments *arguments )
 {
-if( !check_file_exists( arguments->definition.filename ) )
+if( !check_file_exists( arguments->definition.str ) )
     {
     print_error( "Input definition file was provided, but did not exist." );
     return( false );
     }
 
-size_t json_size = get_file_char_size( arguments->definition.filename );
+size_t json_size = get_file_char_size( arguments->definition.str );
 if( json_size == 0 )
     {
     print_error( "Input definition file was empty." );
@@ -534,7 +602,7 @@ if( json_size == 0 )
 
 static ParseDefinitionState parse = {};
 parse.json_string = (char*)malloc( json_size );
-read_json_as_string( arguments->definition.filename, json_size, parse.json_string );
+read_json_as_string( arguments->definition.str, json_size, parse.json_string );
 
 cJSON *json = cJSON_ParseWithLength( parse.json_string, json_size );
 const char *error = cJSON_GetErrorPtr();
@@ -549,6 +617,7 @@ DefinitionVisitor visitor;
 std::vector<AssetFileAssetId> asset_ids;
 AssetFileWriter output_file = {};
 std::unordered_map<std::string, AssetFileAssetId> texture_map;
+WriteStats fonts_stats = {};
 WriteStats models_stats = {};
 WriteStats textures_stats = {};
 //WriteStats shaders_stats = {};
@@ -564,7 +633,7 @@ if( !assets )
     goto error_cleanup;
     }
 
-visit_all_definition_assets( assets, arguments->assets_folder.foldername, &visitor );
+visit_all_definition_assets( assets, arguments->assets_folder.str, arguments->input_fonts_folder.str, &visitor );
 for( auto &entry : visitor.asset_map )
     {
     asset_ids.push_back( entry.first );
@@ -580,9 +649,13 @@ if( asset_ids.empty() )
     }
 
 std::sort( asset_ids.begin(), asset_ids.end() );
-if( !AssetFile_CreateForWrite( arguments->output_binary.filename, &asset_ids[ 0 ], (uint32_t)asset_ids.size(), &output_file ) )
+CreateDirectoryA( arguments->output_binary_folder.str, 0 );
+if( !AssetFile_CreateForWrite( arguments->output_binary.str, &asset_ids[ 0 ], (uint32_t)asset_ids.size(), &output_file ) )
     {
-    print_error( "Could not create output file at the path requested." );
+    std::vector<char> cwd_buffer;
+    cwd_buffer.resize( 1000 );
+    GetCurrentDirectoryA( (DWORD)cwd_buffer.size(), cwd_buffer.data() );
+    print_error( "Could not create output file at the path requested (%s), working directory = (%s).", arguments->output_binary.str, cwd_buffer.data() );
     goto error_cleanup;
     }
 
@@ -592,6 +665,18 @@ for( auto &entry : visitor.asset_map )
     WriteStats this_stats = {};
     switch( entry.second.kind )
         {
+        case ASSET_FILE_ASSET_KIND_FONT:
+            this_stats = {};
+            if( !ExportFont_Export( entry.first, entry.second.asset_id_str.c_str(), entry.second.filename.c_str(), entry.second.font_point_sz, entry.second.font_glyphs.c_str(), this_stats, &output_file) )
+                {
+                print_error( "Failed to load font (%s).  Exiting...", entry.second.filename.c_str() );
+                goto error_cleanup;
+                }
+
+            fonts_stats.fonts_written++;
+            fonts_stats.written_sz += this_stats.written_sz;
+            break;
+
         case ASSET_FILE_ASSET_KIND_MODEL:
             this_stats = {};
             if( !ExportModel_Export( entry.first, entry.second.filename.c_str(), &texture_map, &this_stats, &output_file ) )
@@ -644,18 +729,19 @@ for( auto &entry : visitor.asset_map )
 if( sound_sample_pairs.size()
  || music_clip_pairs.size() )
     {
-    ExportSounds_CreateBanks( sound_sample_pairs, sound_sample_stats, music_clip_pairs, music_clip_stats, arguments->output_soundbank_folder.foldername );
+    ExportSounds_CreateBanks( sound_sample_pairs, sound_sample_stats, music_clip_pairs, music_clip_stats, arguments->output_soundbank_folder.str );
     }
 	
 success = ExportTexture_WriteTextureExtents( texture_extent_map, &output_file );
 
 success = AssetFile_CloseForWrite( &output_file );
 printf( "\n" );
-print_info( "<" ASSET_FILE_BINARY_FILENAME ">  %d Models (%d bytes), %d Textures (%d bytes)",
-            (int)models_stats.models_written, (int)models_stats.written_sz,
-            (int)textures_stats.textures_written, (int)textures_stats.written_sz );
+print_info( "<" ASSET_FILE_BINARY_FILENAME ">     %d Models (%d bytes), %d Textures (%d bytes)",
+            (int)models_stats.models_written,     (int)models_stats.written_sz,
+            (int)textures_stats.textures_written, (int)textures_stats.written_sz,
+            (int)fonts_stats.fonts_written,       (int)fonts_stats.written_sz );
 print_info( "<" ASSET_FILE_SOUND_BANK_FILENAME ">  %d samples (%0.1f MB).", (int)sound_sample_stats.sound_samples_written, ( (float)sound_sample_stats.written_sz ) / ( 1024 * 1024 ) );
-print_info( "<" ASSET_FILE_MUSIC_BANK_FILENAME ">  %d clips (%0.1f MB).", (int)music_clip_stats.music_clips_written, ( (float)music_clip_stats.written_sz ) / ( 1024 * 1024) );
+print_info( "<" ASSET_FILE_MUSIC_BANK_FILENAME ">   %d clips (%0.1f MB).",   (int)music_clip_stats.music_clips_written,     ( (float)music_clip_stats.written_sz ) / ( 1024 * 1024) );
 
 error_cleanup:
 cJSON_Delete( json );
@@ -700,8 +786,62 @@ return( size_read == sz );
 *
 *******************************************************************/
 
-static bool visit_all_definition_assets( const cJSON *assets, const char *asset_folder, _DefinitionVisitor *visitor )
+static bool visit_all_definition_assets( const cJSON *assets, const char *asset_folder, const char *input_font_folder, _DefinitionVisitor *visitor )
 {
+/* Fonts */
+const cJSON *fonts = cJSON_GetObjectItemCaseSensitive( assets, "font" );
+if( fonts )
+    {    
+    const cJSON *font_list = cJSON_GetObjectItemCaseSensitive( fonts, "list" );
+    const cJSON *font = NULL;
+    cJSON_ArrayForEach( font, font_list )
+        {
+        const cJSON *font_filename = cJSON_GetObjectItemCaseSensitive( font, "filename" );
+        const cJSON *font_asset_id = cJSON_GetObjectItemCaseSensitive( font, "assetid" );
+        const cJSON *font_point_size = cJSON_GetObjectItemCaseSensitive( font, "pt" );
+        const cJSON *font_glyphs = cJSON_GetObjectItemCaseSensitive( font, "glyphs" );
+
+        if( !font_filename
+         || !cJSON_IsString( font_filename ) )
+            {
+            print_error( "Could not find filename for font (%s).", cJSON_Print( font ) );
+            return( false );
+            }
+        else if( !font_asset_id
+              || !cJSON_IsString( font_asset_id ) )
+            {
+            print_error( "Could not find asset ID for font (%s)", cJSON_Print( font ) );
+            return( false );
+            }
+        else if( !font_point_size
+              || !cJSON_IsNumber( font_point_size ) )
+            {
+            print_error( "Could not find point size for font (%s)", cJSON_Print( font ) );
+            return( false );
+            }
+        else if( !font_glyphs
+              || !cJSON_IsString( font_glyphs ) )
+            {
+            print_error( "Could not find glyphs for font (%s)", cJSON_Print( font ) );
+            return( false );
+            }
+      
+        std::string font_filename_str( input_font_folder );
+        font_filename_str.append( "/" );
+        font_filename_str.append( font_filename->valuestring );
+        if( !check_file_exists( font_filename_str.c_str() ) )
+            {
+            print_error( "Could not find font for filename %s (%s)", font_filename_str.c_str(), cJSON_Print( font ) );
+            return( false );
+            }
+
+        std::ostringstream os;
+        os << fonts->string << "/" << font_asset_id->valuestring;        
+        visitor->VisitFont( os.str().c_str(), font_filename_str.c_str(), font_point_size->valueint, font_glyphs->valuestring );
+        }
+
+    }
+
 /* Models */
 const cJSON *models = cJSON_GetObjectItemCaseSensitive( assets, "model" );
 if( models )
