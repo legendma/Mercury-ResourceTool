@@ -39,6 +39,24 @@ typedef enum _AssetFileAssetKind
     ASSET_FILE_ASSET_KIND_TEXTURE_EXTENTS
     } AssetFileAssetKind;
 
+typedef struct _AssetFileFontGlyph
+    {
+    uint8_t             glyph;      /* glyph ascii code             */
+    uint16_t            width;      /* glyph width in pixels        */
+    uint16_t            height;     /* glyph heigh in pixels        */
+    float               top_left_x; /* pen x offset to top-left     */
+    float               top_left_y; /* pen y offset to top-left     */
+    float               bottom_right_x;
+                                    /* pen x offset to bottom-right */
+    float               bottom_right_y;
+                                    /* pen y offset to bottom-right */
+    float               u0;         /* top-left UV x coordinate     */
+    float               v0;         /* top-left UV y coordinate     */
+    float               u1;         /* bottom-right UV x coordinate */
+    float               v1;         /* bottom-right UV y coordinate */
+    float               h_advance;  /* horizontal pen advancement   */
+    } AssetFileFontGlyph;
+
 typedef enum _AssetFileModelElementKind
     {
     ASSET_FILE_MODEL_ELEMENT_KIND_INVALID,
@@ -151,6 +169,9 @@ bool   AssetFile_EndWritingModel( const uint32_t root_node_element, AssetFileWri
 bool   AssetFile_EndWritingTextureExtents( AssetFileWriter *output );
 size_t AssetFile_GetWriteSize( const AssetFileWriter *output );
 bool   AssetFile_OpenForRead( const char *filename, AssetFileReader *input );
+bool   AssetFile_ReadFontGlyphs( const uint16_t glyph_capacity, AssetFileFontGlyph *glyphs, AssetFileReader *input );
+bool   AssetFile_ReadFontTexture( const uint32_t buffer_sz, uint8_t *pixels, uint16_t *width, uint16_t *height, AssetFileReader *input );
+bool   AssetFile_ReadFontStorageRequirements( uint16_t *glyph_cnt, uint32_t *texture_sz, AssetFileReader *input );
 bool   AssetFile_ReadModelMaterials( const uint32_t material_capacity, uint32_t *material_count, AssetFileModelMaterial *materials, AssetFileReader *input );
 bool   AssetFile_ReadModelMeshIndices( const uint32_t mesh_index, const uint32_t index_capacity, uint32_t *index_count, AssetFileModelIndex *indices, AssetFileReader *input );
 bool   AssetFile_ReadModelMeshVertices( const uint32_t mesh_index, const uint32_t vertex_capacity, AssetFileModelIndex *material_index, uint32_t *vertex_count, AssetFileModelVertex *vertices, AssetFileReader *input );

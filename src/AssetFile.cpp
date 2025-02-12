@@ -799,6 +799,161 @@ return( true );
 
 /*******************************************************************
 *
+*   AssetFile_ReadFontGlyphs()
+*
+*   DESCRIPTION:
+*       Read and output a font's glyph data.
+*
+*******************************************************************/
+
+bool AssetFile_ReadFontGlyphs( const uint16_t glyph_capacity, AssetFileFontGlyph *glyphs, AssetFileReader *input )
+{
+if( input->kind != ASSET_FILE_ASSET_KIND_FONT
+ || !input->asset_start
+ || glyph_capacity == NULL )
+    {
+    return( false );
+    }
+
+if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+FontHeader header = {};
+if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+    {
+    return( false );
+    }
+
+if( glyph_capacity < header.glyph_cnt )
+    {
+    return( false );
+    }
+    
+if( fseek( input->fhnd, header.glyphs_starts_at, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+for( uint32_t i = 0; i < header.glyph_cnt; i++ )
+    {
+    FontGlyphHeader glyph = {};
+    if( fread_s( &glyph, sizeof(glyph), 1, sizeof(glyph), input->fhnd ) != sizeof(glyph) )
+        {
+        return( false );
+        }
+
+    AssetFileFontGlyph *out = &glyphs[ i ];
+    
+    out->glyph          = glyph.glyph;
+    out->width          = glyph.u1 - glyph.u0;
+    out->height         = glyph.v1 - glyph.v0;
+    out->top_left_x     = glyph.pen_offset_x;
+    out->top_left_y     = glyph.pen_offset_y;
+    out->bottom_right_x = out->top_left_x + (float)out->width;
+    out->bottom_right_y = out->top_left_y + (float)out->height;
+    out->u0             = (float)glyph.u0 / header.texture_width;
+    out->v0             = (float)glyph.v0 / header.texture_height;
+    out->u1             = (float)glyph.u1 / header.texture_width;
+    out->v1             = (float)glyph.v1 / header.texture_height;
+    out->h_advance      = glyph.h_advance;
+    }
+
+return( true );
+
+}   /* AssetFile_ReadFontGlyphs() */
+
+
+/*******************************************************************
+*
+*   AssetFile_ReadFontTexture()
+*
+*   DESCRIPTION:
+*       Read the font's texture dimensions and pixel data.
+*
+*******************************************************************/
+
+bool AssetFile_ReadFontTexture( const uint32_t buffer_sz, uint8_t *pixels, uint16_t *width, uint16_t *height, AssetFileReader *input )
+{
+if( input->kind != ASSET_FILE_ASSET_KIND_FONT
+ || !input->asset_start
+ || pixels == NULL
+ || width == NULL
+ || height == NULL )
+    {
+    return( false );
+    }
+
+if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+FontHeader header = {};
+if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+    {
+    return( false );
+    }
+
+*width  = header.texture_width;
+*height = header.texture_height;
+
+if( fseek( input->fhnd, header.texture_starts_at, SEEK_SET ) )
+    {
+    return( false );
+    }
+    
+if( fread_s( pixels, header.texture_sz, 1, sizeof(*pixels), input->fhnd ) != header.texture_sz )
+    {
+    return( false );
+    }
+
+return( true );
+
+}   /* AssetFile_ReadFontTexture() */
+
+
+/*******************************************************************
+*
+*   AssetFile_ReadFontStorageRequirements()
+*
+*   DESCRIPTION:
+*       Read the storage needed to query a font.
+*
+*******************************************************************/
+
+bool AssetFile_ReadFontStorageRequirements( uint16_t *glyph_cnt, uint32_t *texture_sz, AssetFileReader *input )
+{
+if( input->kind != ASSET_FILE_ASSET_KIND_FONT
+ || !input->asset_start
+ || glyph_cnt == NULL
+ || texture_sz == NULL )
+    {
+    return( false );
+    }
+
+if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+    {
+    return( false );
+    }
+
+FontHeader header = {};
+if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+    {
+    return( false );
+    }
+
+*glyph_cnt  = header.glyph_cnt;
+*texture_sz = header.texture_sz;
+
+return( true );
+
+}   /* AssetFile_ReadFontStorageRequirements() */
+
+
+/*******************************************************************
+*
 *   AssetFile_ReadModelMaterials()
 *
 *   DESCRIPTION:
