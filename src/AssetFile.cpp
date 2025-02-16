@@ -26,6 +26,10 @@ typedef struct
 
 typedef struct
     {
+    uint8_t             oversample_x;
+                                    /* horizontal texels/pixels     */
+    uint8_t             oversample_y;
+                                    /* vertical texels/pixels       */
     uint16_t            texture_width;
                                     /* texture extent width         */
     uint16_t            texture_height;
@@ -337,7 +341,7 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_DescribeFont( const uint16_t texture_width, const uint16_t texture_height, const uint32_t texture_sz, const uint8_t *pixels, const uint16_t glyph_cnt, const uint8_t *glyph_codes, AssetFileWriter *output )
+bool AssetFile_DescribeFont( const uint8_t oversample_x, const uint8_t oversample_y, const uint16_t texture_width, const uint16_t texture_height, const uint32_t texture_sz, const uint8_t *pixels, const uint16_t glyph_cnt, const uint8_t *glyph_codes, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_FONT
 || !output->asset_start
@@ -347,7 +351,9 @@ if( output->kind != ASSET_FILE_ASSET_KIND_FONT
     }
 
 FontHeader header = {};
-header.texture_height    = texture_width;
+header.oversample_x      = oversample_x;
+header.oversample_y      = oversample_y;
+header.texture_width     = texture_width;
 header.texture_height    = texture_height;
 header.glyph_cnt         = glyph_cnt;
 header.texture_sz        = texture_sz;
@@ -810,7 +816,7 @@ bool AssetFile_ReadFontGlyphs( const uint16_t glyph_capacity, AssetFileFontGlyph
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_FONT
  || !input->asset_start
- || glyph_capacity == NULL )
+ || glyphs == NULL )
     {
     return( false );
     }
@@ -836,6 +842,9 @@ if( fseek( input->fhnd, header.glyphs_starts_at, SEEK_SET ) )
     return( false );
     }
 
+float width_scale  = 1.0f / (float)header.oversample_x;
+float height_scale = 1.0f / (float)header.oversample_y;
+
 for( uint32_t i = 0; i < header.glyph_cnt; i++ )
     {
     FontGlyphHeader glyph = {};
@@ -847,12 +856,12 @@ for( uint32_t i = 0; i < header.glyph_cnt; i++ )
     AssetFileFontGlyph *out = &glyphs[ i ];
     
     out->glyph          = glyph.glyph;
-    out->width          = glyph.u1 - glyph.u0;
-    out->height         = glyph.v1 - glyph.v0;
+    out->width          = width_scale  * ( glyph.u1 - glyph.u0 );
+    out->height         = height_scale * ( glyph.v1 - glyph.v0 );
     out->top_left_x     = glyph.pen_offset_x;
     out->top_left_y     = glyph.pen_offset_y;
-    out->bottom_right_x = out->top_left_x + (float)out->width;
-    out->bottom_right_y = out->top_left_y + (float)out->height;
+    out->bottom_right_x = out->top_left_x + out->width;
+    out->bottom_right_y = out->top_left_y + out->height;
     out->u0             = (float)glyph.u0 / header.texture_width;
     out->v0             = (float)glyph.v0 / header.texture_height;
     out->u1             = (float)glyph.u1 / header.texture_width;
@@ -904,7 +913,7 @@ if( fseek( input->fhnd, header.texture_starts_at, SEEK_SET ) )
     return( false );
     }
     
-if( fread_s( pixels, header.texture_sz, 1, sizeof(*pixels), input->fhnd ) != header.texture_sz )
+if( fread_s( pixels, header.texture_sz, 1, header.texture_sz, input->fhnd ) != header.texture_sz )
     {
     return( false );
     }

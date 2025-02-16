@@ -736,7 +736,7 @@ success = ExportTexture_WriteTextureExtents( texture_extent_map, &output_file );
 
 success = AssetFile_CloseForWrite( &output_file );
 printf( "\n" );
-print_info( "<" ASSET_FILE_BINARY_FILENAME ">     %d Models (%d bytes), %d Textures (%d bytes)",
+print_info( "<" ASSET_FILE_BINARY_FILENAME ">     %d Models (%d bytes), %d Textures (%d bytes), %d Fonts (%d bytes)",
             (int)models_stats.models_written,     (int)models_stats.written_sz,
             (int)textures_stats.textures_written, (int)textures_stats.written_sz,
             (int)fonts_stats.fonts_written,       (int)fonts_stats.written_sz );

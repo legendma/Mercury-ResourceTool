@@ -42,8 +42,8 @@ typedef enum _AssetFileAssetKind
 typedef struct _AssetFileFontGlyph
     {
     uint8_t             glyph;      /* glyph ascii code             */
-    uint16_t            width;      /* glyph width in pixels        */
-    uint16_t            height;     /* glyph heigh in pixels        */
+    float               width;      /* glyph width in pixels        */
+    float               height;     /* glyph heigh in pixels        */
     float               top_left_x; /* pen x offset to top-left     */
     float               top_left_y; /* pen y offset to top-left     */
     float               bottom_right_x;
@@ -154,7 +154,7 @@ bool   AssetFile_BeginWritingModelElement( const AssetFileModelElementKind kind,
 bool   AssetFile_CloseForRead( AssetFileReader *input );
 bool   AssetFile_CloseForWrite( AssetFileWriter *output );
 bool   AssetFile_CreateForWrite( const char *filename, const AssetFileAssetId *ids, const uint32_t ids_count, AssetFileWriter *output );
-bool   AssetFile_DescribeFont( const uint16_t texture_width, const uint16_t texture_height, const uint32_t texture_sz, const uint8_t *pixels, const uint16_t glyph_cnt, const uint8_t *glyph_codes, AssetFileWriter *output );
+bool   AssetFile_DescribeFont( const uint8_t oversample_x, const uint8_t oversample_y, const uint16_t texture_width, const uint16_t texture_height, const uint32_t texture_sz, const uint8_t *pixels, const uint16_t glyph_cnt, const uint8_t *glyph_codes, AssetFileWriter *output );
 bool   AssetFile_DescribeModel( const uint32_t node_count, const uint32_t mesh_count, const uint32_t material_count, AssetFileWriter *output );
 bool   AssetFile_DescribeModelMaterial( const AssetFileModelMaterialBits maps, AssetFileWriter *output );
 bool   AssetFile_DescribeModelMesh( const uint32_t material_element_index, const uint32_t vertex_cnt, const uint32_t index_cnt, AssetFileWriter *output );
@@ -218,6 +218,23 @@ for( uint32_t i = 0; i < name_length; i++ )
 return( ret );
 
 } /* AssetFile_MakeAssetIdFromName() */
+
+
+/*******************************************************************
+*
+*   AssetFile_MakeAssetIdFromName2()
+*
+*   DESCRIPTION:
+*       Create a 32-bit hash asset id given the string asset id
+*       name.
+*
+*******************************************************************/
+
+static uint32_t inline AssetFile_MakeAssetIdFromName2( const char *name )
+{
+return( AssetFile_MakeAssetIdFromName( name, (uint32_t)strlen( name ) ) );
+
+} /* AssetFile_MakeAssetIdFromName2() */
 
 
 /*******************************************************************

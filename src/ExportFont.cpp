@@ -15,6 +15,7 @@
 #include "AssetFile.hpp"
 #include "ResourceUtilities.hpp"
 
+#define PADDING_PX                  ( 1 )
 
 struct FontFile
     {
@@ -64,9 +65,9 @@ struct FontFile
 
 struct GlyphBitmap
     {
-    GlyphBitmap( const char *filename, const float font_height, const char glyph, stbtt_fontinfo &font )
+    GlyphBitmap( const char *filename, const float font_scale, const char glyph, stbtt_fontinfo &font )
         {
-        _data = stbtt_GetCodepointBitmap( &font, 0, font_height, (int)glyph, &_width, &_height, &_x_offset, &_y_offset );
+        _data = stbtt_GetCodepointBitmap( &font, 0, font_scale, (int)glyph, &_width, &_height, &_x_offset, &_y_offset );
         if( !_data )
             {
             print_error( "ExportFont_Export() could not query the bitmap for a font. file = (%s), glyph = (%c).", filename, glyph );
@@ -97,7 +98,7 @@ static void        AddAllNumericGlyphs( std::set<char> &glyphs );
 static void        AddAllSpecial( std::set<char> &glyphs );
 static bool        DetermineTextureDims( std::vector<GlyphBitmap> &bitmaps, int &tex_width, int &tex_height );
 static std::string ParseGlyphString( const char *glyphs );
-static bool        WriteToAssetFile( const AssetFileAssetId id, const std::string &asset_id_str, const uint8_t *pixels, const uint16_t width, const uint16_t height, const uint16_t glyph_cnt, stbtt_packedchar *glyphs, const std::string glyph_str, AssetFileWriter *output );
+static bool        WriteToAssetFile( const AssetFileAssetId id, const std::string &asset_id_str, const uint8_t *pixels, const uint8_t oversample_x, const uint8_t oversample_y, const uint16_t width, const uint16_t height, const uint16_t glyph_cnt, stbtt_packedchar *glyphs, const std::string glyph_str, AssetFileWriter *output );
 
 
 /*******************************************************************
@@ -130,7 +131,7 @@ if( !stbtt_InitFont( &font, font_data._data, stbtt_GetFontOffsetForIndex( font_d
     }
 
 /* Get the dimensions of the final texture */
-float font_height = stbtt_ScaleForPixelHeight( &font, (float)point_size );
+float font_scale = stbtt_ScaleForPixelHeight( &font, (float)point_size );
 std::string all_glyphs = ParseGlyphString( glyphs );
 std::vector<GlyphBitmap> bitmaps;
 bitmaps.reserve( all_glyphs.size() );
@@ -142,7 +143,7 @@ for( auto glyph : all_glyphs )
         continue;
         }
 
-    bitmaps.emplace_back( filename, font_height, glyph, font);
+    bitmaps.emplace_back( filename, font_scale, glyph, font);
     }
 
 if( bitmaps.size() != all_glyphs.length() )
@@ -179,7 +180,7 @@ if( point_size < 30 )
 
 dyn_array<unsigned char> final_texture( tex_width * tex_height );
 PackContext rect_pack = {};
-if( !stbtt_PackBegin( &rect_pack, final_texture.data(), tex_width, tex_height, 0, 1, nullptr) )
+if( !stbtt_PackBegin( &rect_pack, final_texture.data(), tex_width, tex_height, 0, PADDING_PX, nullptr) )
     {
     print_error( "ExportFont_Export() failed to start packing atlas. font = (%s), point = (%d).", filename, point_size );
     return( false );
@@ -241,9 +242,16 @@ for( auto i = 0; i < (int)final_texture.size(); i++ )
 
 assert( has_data );
 
+int space_advance = 0;
+stbtt_GetCodepointHMetrics( &font, ' ', &space_advance, nullptr );
+char_data.push_back({});
+auto &space_char_data = char_data.back();
+space_char_data.xadvance = (float)space_advance * font_scale;
+all_glyphs.push_back( ' ' );
+
 /* Add it to the asset binary */
 assert( char_data.size() == all_glyphs.size() );
-if( !WriteToAssetFile( id, strip_filename( asset_id_str ), (uint8_t*)final_texture.data(), (uint16_t)tex_width, (uint16_t)tex_height, (uint16_t)char_data.size(), char_data.data(), all_glyphs.c_str(), output ) ) // TODO <MPA> : KERNING!!! :)
+if( !WriteToAssetFile( id, strip_filename( asset_id_str ), (uint8_t*)final_texture.data(), (uint8_t)oversample_x, (uint8_t)oversample_y, (uint16_t)tex_width, (uint16_t)tex_height, (uint16_t)char_data.size(), char_data.data(), all_glyphs.c_str(), output ) ) // TODO <MPA> : KERNING!!! :)
     {
     return( false );
     }
@@ -353,8 +361,8 @@ for( auto &bitmap : bitmaps )
     {
     rects.push_back( {} );
     auto &rect = rects.back();
-    rect.w = bitmap._width;
-    rect.h = bitmap._height;
+    rect.w = bitmap._width + PADDING_PX;
+    rect.h = bitmap._height + PADDING_PX;
     }
 
 /* stbtt doesn't seem to have a good method of determining the proper size for textures - so we'll just discover it via trial and error */
@@ -362,8 +370,8 @@ stbrp_context context = {};
 bool failed;
 do
     {
-    dyn_array<stbrp_node> nodes( try_width );
-    stbrp_init_target( &context, try_width, try_height, nodes.data(), (int)nodes.size() );
+    dyn_array<stbrp_node> nodes( try_width - PADDING_PX );
+    stbrp_init_target( &context, try_width - PADDING_PX, try_height - PADDING_PX, nodes.data(), (int)nodes.size() );
 
     failed = !stbrp_pack_rects( &context, rects.data(), (int)rects.size() );
     if( !failed )
@@ -497,7 +505,7 @@ return( input );
 *
 *******************************************************************/
 
-static bool WriteToAssetFile( const AssetFileAssetId id, const std::string &asset_id_str, const uint8_t *pixels, const uint16_t width, const uint16_t height, const uint16_t glyph_cnt, stbtt_packedchar *glyphs, const std::string glyph_str, AssetFileWriter *output )
+static bool WriteToAssetFile( const AssetFileAssetId id, const std::string &asset_id_str, const uint8_t *pixels, const uint8_t oversample_x, const uint8_t oversample_y, const uint16_t width, const uint16_t height, const uint16_t glyph_cnt, stbtt_packedchar *glyphs, const std::string glyph_str, AssetFileWriter *output )
 {
 if( !AssetFile_BeginWritingAsset( id, ASSET_FILE_ASSET_KIND_FONT, output ) )
     {
@@ -505,7 +513,7 @@ if( !AssetFile_BeginWritingAsset( id, ASSET_FILE_ASSET_KIND_FONT, output ) )
     return( false );
     }
 
-if( !AssetFile_DescribeFont( width, height, width * height * sizeof( *pixels ), pixels, glyph_cnt, (unsigned char*)glyph_str.c_str(), output ) )
+if( !AssetFile_DescribeFont( oversample_x, oversample_y, width, height, width * height * sizeof( *pixels ), pixels, glyph_cnt, (unsigned char*)glyph_str.c_str(), output ) )
     {
 	print_error( "ExportFont_Export() could not write font header (%s).", asset_id_str.c_str() );
 	return( false );
