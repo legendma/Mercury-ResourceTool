@@ -829,6 +829,8 @@ if( fonts )
         std::string font_filename_str( input_font_folder );
         font_filename_str.append( "/" );
         font_filename_str.append( font_filename->valuestring );
+        font_filename_str = resolve_environments( font_filename_str.c_str() );
+
         if( !check_file_exists( font_filename_str.c_str() ) )
             {
             print_error( "Could not find font for filename %s (%s)", font_filename_str.c_str(), cJSON_Print( font ) );

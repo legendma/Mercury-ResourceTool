@@ -2,8 +2,10 @@
 
 #include <cassert>
 #include <cstdarg>
+#include <cstdlib>
 #include <cstdio>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -170,6 +172,47 @@ printf( "\n" );
 va_end( args );
 
 } /* print_info() */
+
+
+/*******************************************************************
+*
+*   resolve_environments()
+*
+*   DESCRIPTION:
+*       Resolve environment variables in a string.
+*
+*******************************************************************/
+
+static inline std::string resolve_environments( const char *in )
+{
+std::string ret( in );
+
+size_t a = ret.find_first_of( "%" );
+while( a != std::string::npos )
+    {
+    size_t b = ret.find_first_of( "%", a + 1 );
+    if( b == std::string::npos )
+        {
+        break;
+        }
+
+    std::string var = ret.substr( a + 1, b - ( a + 1 ) );
+    std::string resolved( getenv( var.c_str() ) );
+    std::stringstream ss;
+    if( a )
+        {
+        ss << ret.substr( 0, a - 1 );
+        }
+    ss << resolved << ret.substr( b + 1, ret.size() );
+    ret = ss.str();
+
+    /* next */
+    a = ret.find_first_of( "%" );
+    }
+
+return( ret );
+
+} /* resolve_environments() */
 
 
 /*******************************************************************
