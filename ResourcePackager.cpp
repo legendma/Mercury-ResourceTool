@@ -360,7 +360,6 @@ typedef struct _DefinitionVisitor
 int main( int argc, char **argv )
 {
 print_info( "Starting...\n" );
-
 try
     {
     clock_t start_time = clock();
