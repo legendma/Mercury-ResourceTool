@@ -18,6 +18,7 @@ source_group( cjson FILES ${CJSON_FILES} )
 
 # ResourcePackager
 file( GLOB SRC_FILES
+      ${PROJECT_SOURCE_DIR}/assets/assets.json
       AssetFile.cpp
       AssetFile.hpp
       assets.json
@@ -33,6 +34,8 @@ file( GLOB SRC_FILES
       ResourcePackager.hpp
 )
 source_group( src FILES ${SRC_FILES} )
+
+list( JOIN RESOURCE_PACKAGE_ARGS " " RESOURCE_PACKAGE_ARGS_JOINED )
 
 add_executable( ResourcePackager EXCLUDE_FROM_ALL
                 CMakeLists.txt
@@ -53,6 +56,7 @@ target_compile_definitions( ResourcePackager PRIVATE
 set_target_properties( ResourcePackager PROPERTIES
                        RUNTIME_OUTPUT_DIRECTORY_DEBUG ${DEPLOY_BASE_PATH}/tools
                        RUNTIME_OUTPUT_DIRECTORY_RELEASE ${DEPLOY_BASE_PATH}/tools
+                       VS_DEBUGGER_COMMAND_ARGUMENTS ${RESOURCE_PACKAGE_ARGS_JOINED}
 )
 add_custom_command( TARGET ResourcePackager POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_PROPERTY:Assimp,IMPORTED_LOCATION> $<TARGET_FILE_DIR:ResourcePackager>
