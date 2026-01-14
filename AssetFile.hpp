@@ -206,6 +206,34 @@ bool   AssetFile_WriteTextureExtent( const AssetFileAssetId id, const uint16_t w
 
 /*******************************************************************
 *
+*   AssetFile_FNV1a()
+*
+*   DESCRIPTION:
+*       Compute a FNV-1a hash.
+*
+*******************************************************************/
+
+static inline uint32_t AssetFile_FNV1a( const void *data, const uint32_t sz )
+{
+static const uint32_t SEED  = 0x811c9dc5;
+static const uint32_t PRIME = 0x01000193;
+
+const uint8_t *bytes = (uint8_t *)data;
+
+uint32_t ret = SEED;
+for( uint32_t i = 0; i < sz; i++ )
+    {
+    ret ^= bytes[ i ];
+    ret *= PRIME;
+    }
+
+return( ret );
+
+} /* AssetFile_MakeAssetIdFromName() */
+
+
+/*******************************************************************
+*
 *   AssetFile_MakeAssetIdFromName()
 *
 *   DESCRIPTION:
@@ -213,19 +241,9 @@ bool   AssetFile_WriteTextureExtent( const AssetFileAssetId id, const uint16_t w
 *
 *******************************************************************/
 
-static AssetFileAssetId inline AssetFile_MakeAssetIdFromName( const char *name, const uint32_t name_length )
+static inline AssetFileAssetId AssetFile_MakeAssetIdFromName( const char *name, const uint32_t name_length )
 {
-static const uint32_t SEED  = 0x811c9dc5;
-static const uint32_t PRIME = 0x01000193;
-
-uint32_t ret = SEED;
-for( uint32_t i = 0; i < name_length; i++ )
-    {
-    ret ^= name[ i ];
-    ret *= PRIME;
-    }
-
-return( ret );
+return( AssetFile_FNV1a( name, name_length ) );
 
 } /* AssetFile_MakeAssetIdFromName() */
 
@@ -240,7 +258,7 @@ return( ret );
 *
 *******************************************************************/
 
-static uint32_t inline AssetFile_MakeAssetIdFromName2( const char *name )
+static inline uint32_t AssetFile_MakeAssetIdFromName2( const char *name )
 {
 return( AssetFile_MakeAssetIdFromName( name, (uint32_t)strlen( name ) ) );
 
