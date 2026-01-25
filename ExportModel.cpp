@@ -248,7 +248,7 @@ for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 		return( false );
 		}
 
-	AssetFileAssetId map_array[ ASSET_FILE_MODEL_TEXTURES_COUNT ];
+	AssetFileAssetId map_array[ ASSET_FILE_MODEL_TEXTURE_COUNT ];
 	uint8_t map_array_count = 0;
 	if( mat_props & ASSET_FILE_MODEL_MATERIAL_BIT_ALBEDO_MAP )
 		{

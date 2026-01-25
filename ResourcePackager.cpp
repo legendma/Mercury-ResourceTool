@@ -839,7 +839,7 @@ if( fonts )
             }
 
         std::ostringstream os;
-        os << fonts->string << "/" << font_asset_id->valuestring;        
+        os << "fnt/" << font_asset_id->valuestring;        
         visitor->VisitFont( os.str().c_str(), font_filename_str.c_str(), font_point_size->valueint, font_glyphs->valuestring );
         }
 
@@ -888,7 +888,7 @@ if( models )
             }
 
         std::ostringstream os;
-        os << models->string << "/" << model_asset_id->valuestring;
+        os << "mdl/" << model_asset_id->valuestring;
         visitor->VisitModel( os.str().c_str(), model_filename_str.c_str() );
         }
 
@@ -1000,7 +1000,7 @@ if( textures )
             }
 
         std::ostringstream os;
-        os << textures->string << "/" << texture_asset_id->valuestring;
+        os << "tex/" << texture_asset_id->valuestring;
         visitor->VisitTexture( os.str().c_str(), texture_filename_str.c_str());
         }
 
@@ -1049,7 +1049,7 @@ if( sound_samples )
             }
 
         std::ostringstream os;
-        os << sound_samples->string << "/" << sound_sample_asset_id->valuestring;
+        os << "snd/" << sound_sample_asset_id->valuestring;
         visitor->VisitSoundSample( os.str().c_str(), sound_sample_filename_str.c_str());
         }
 
@@ -1098,7 +1098,7 @@ if( music_clips )
             }
 
         std::ostringstream os;
-        os << music_clips->string << "/" << music_clip_asset_id->valuestring;
+        os << "msc/" << music_clip_asset_id->valuestring;
         visitor->VisitMusicClip( os.str().c_str(), music_clip_filename_str.c_str());
         }
 

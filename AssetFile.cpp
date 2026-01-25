@@ -1008,7 +1008,7 @@ for( uint32_t i = 0; i < header.material_cnt; i++ )
         }
 
     materials[ i ].bits = material.map_bits;
-    for( uint32_t j = 0; j < ASSET_FILE_MODEL_TEXTURES_COUNT; j++ )
+    for( uint32_t j = 0; j < ASSET_FILE_MODEL_TEXTURE_COUNT; j++ )
         {
         if( !( material.map_bits & ( 1 << j ) ) )
             {
