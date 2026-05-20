@@ -22,7 +22,7 @@
 #include "ExportTexture.hpp"
 #include "ResourceUtilities.hpp"
 
-#define MAX_ARGUMENT_LENGTH         ( 500 )
+#define MAX_ARGUMENT_LENGTH         ( 900 )
 #define ARGUMENT_INPUT_DEFINITION   "-d"
 #define ARGUMENT_OUTPUT_BINARY      "-o"
 #define ARGUMENT_ASSET_ROOT         "-r"
