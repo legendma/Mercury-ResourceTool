@@ -10,15 +10,12 @@
 #include <sstream>
 #include <unordered_map>
 #include <vector>
-#include <windows.h>
-#include <io.h>
 
 #include "cjson.h"
 #include "AssetFile.hpp"
 #include "ExportFont.hpp"
 #include "ExportModel.hpp"
 #include "ExportSounds.hpp"
-//#include "ExportShader.hpp"
 #include "ExportTexture.hpp"
 #include "ResourceUtilities.hpp"
 
@@ -65,9 +62,9 @@ typedef struct _ParseDefinitionState
 
 struct _DefinitionVisitor;
 
-static bool check_file_exists( const char *filename );
 static size_t get_file_char_size( const char *filename );
 static void parse_args( int argc, char **argv, ProgramArguments *arguments );
+static void print_args( ProgramArguments *arguments );
 static bool process_args( const ProgramArguments *arguments );
 static bool read_json_as_string( const char *filename, const size_t sz, char *out );
 static bool visit_all_definition_assets( const cJSON *assets, const char *asset_folder, const char *input_font_folder, _DefinitionVisitor *visitor );
@@ -108,7 +105,7 @@ typedef struct _DefinitionVisitor
     std::string point_size_filename = ss.str();
     if( std::find( seen_filenames.begin(), seen_filenames.end(), point_size_filename ) != seen_filenames.end() )
         {
-        print_warning( "Found duplicate filename (%s).  This time as FONT.  Ignoring (%s)...", stripped, point_size_filename );
+        print_warning( "Found duplicate filename (%s).  This time as FONT.  Ignoring (%s)...", stripped.c_str(), point_size_filename.c_str() );
         return;
         }
 
@@ -117,7 +114,7 @@ typedef struct _DefinitionVisitor
     AssetFileAssetId id = AssetFile_MakeAssetIdFromName( asset_id, (uint32_t)strlen( asset_id ) );
     if( asset_map.find( id ) != asset_map.end() )
         {
-        print_warning( "Found duplicate asset name (%s).  This time as FONT.  Overwriting with (%s)...", asset_id, point_size_filename );
+        print_warning( "Found duplicate asset name (%s).  This time as FONT.  Overwriting with (%s)...", asset_id, point_size_filename.c_str() );
         }
 
     AssetDescriptor descriptor = {};
@@ -147,7 +144,7 @@ typedef struct _DefinitionVisitor
     std::string stripped = strip_filename( filename );
     if( std::find( seen_filenames.begin(), seen_filenames.end(), stripped ) != seen_filenames.end() )
         {
-        print_warning( "Found duplicate filename (%s).  This time as MODEL.  Ignoring (%s)...", stripped, filename );
+        print_warning( "Found duplicate filename (%s).  This time as MODEL.  Ignoring (%s)...", stripped.c_str(), filename );
         return;
         }
 
@@ -184,7 +181,7 @@ typedef struct _DefinitionVisitor
     std::string stripped = strip_filename( filename );
     if( std::find( seen_filenames.begin(), seen_filenames.end(), stripped ) != seen_filenames.end() )
         {
-        print_warning( "Found duplicate filename (%s).  This time as MUSIC CLIP.  Ignoring (%s)...", stripped, filename );
+        print_warning( "Found duplicate filename (%s).  This time as MUSIC CLIP.  Ignoring (%s)...", stripped.c_str(), filename );
         return;
         }
 
@@ -207,44 +204,6 @@ typedef struct _DefinitionVisitor
     }   /* VisitMusicClip() */
 
 
-    ///***************************************************************
-    //*
-    //*   VisitShader()
-    //*
-    //*   DESCRIPTION:
-    //*       Tabulate the shader asset in the descriptor JSON.
-    //*
-    //***************************************************************/
-
-    //virtual void VisitShader( const char *asset_id, const char *filename, const char *target, const char *entry_point )
-    //{
-    //std::string stripped = strip_filename( filename );
-    //if( std::find( seen_filenames.begin(), seen_filenames.end(), stripped ) != seen_filenames.end() )
-    //    {
-    //    print_warning( "Found duplicate filename (%s).  This time as SHADER.  Ignoring (%s)...", stripped, filename );
-    //    return;
-    //    }
-
-    //seen_filenames.push_back( stripped );
-
-    //AssetFileAssetId id = AssetFile_MakeAssetIdFromName( asset_id, (uint32_t)strlen( asset_id ) );
-    //if( asset_map.find( id ) != asset_map.end() )
-    //    {
-    //    print_warning( "Found duplicate asset name (%s).  This time as SHADER.  Overwriting with (%s)...", asset_id, filename );
-    //    }
-
-    //AssetDescriptor descriptor = {};
-    //descriptor.kind               = ASSET_FILE_ASSET_KIND_SHADER;
-    //descriptor.filename           = std::string( filename );
-    //descriptor.stripped_filename  = stripped;
-    //descriptor.shader_target      = std::string( target );
-    //descriptor.shader_entry_point = std::string( entry_point );
-
-    //asset_map[ id ] = descriptor;
-
-    //}   /* VisitShader() */
-
-
     /***************************************************************
     *
     *   VisitSoundSample()
@@ -259,7 +218,7 @@ typedef struct _DefinitionVisitor
     std::string stripped = strip_filename( filename );
     if( std::find( seen_filenames.begin(), seen_filenames.end(), stripped ) != seen_filenames.end() )
         {
-        print_warning( "Found duplicate filename (%s).  This time as SOUND SAMPLE.  Ignoring (%s)...", stripped, filename );
+        print_warning( "Found duplicate filename (%s).  This time as SOUND SAMPLE.  Ignoring (%s)...", stripped.c_str(), filename );
         return;
         }
 
@@ -296,7 +255,7 @@ typedef struct _DefinitionVisitor
     std::string stripped = strip_filename( filename );
     if( std::find( seen_filenames.begin(), seen_filenames.end(), stripped ) != seen_filenames.end() )
         {
-        print_warning( "Found duplicate filename (%s).  This time as TEXTURE.  Ignoring (%s)...", stripped, filename );
+        print_warning( "Found duplicate filename (%s).  This time as TEXTURE.  Ignoring (%s)...", stripped.c_str(), filename );
         return;
         }
 
@@ -360,6 +319,29 @@ typedef struct _DefinitionVisitor
 int main( int argc, char **argv )
 {
 print_info( "Starting...\n" );
+std::vector<std::string> default_arguments;
+std::vector<char*> false_argv;
+if( argc < 2 )
+    {
+    default_arguments.push_back( std::string( argv[0] ) );
+    std::string all_args = DEFAULT_PROG_ARGS;
+    std::stringstream ss( all_args );
+
+    std::string token;
+    while ( ss >> token )
+        {
+        default_arguments.push_back( token );
+        }
+
+    for ( std::string &str : default_arguments )
+        {
+        false_argv.push_back( (char*)str.c_str() );
+        }
+
+    argc = (int)default_arguments.size();
+    argv = false_argv.data();
+    }
+
 try
     {
     clock_t start_time = clock();
@@ -379,6 +361,7 @@ try
         }
 
     parse_args( argc, argv, &arguments );
+    print_args( &arguments );
 
     bool has_error = false;
     if( !arguments.definition.is_valid )
@@ -437,26 +420,6 @@ return( 0 );
 
 /*******************************************************************
 *
-*   check_file_exists()
-*
-*   DESCRIPTION:
-*       Does the given file exist?
-*
-*******************************************************************/
-
-static bool check_file_exists( const char *filename )
-{
-#define ACCESS_CHECK_EXISTANCE      ( 0x00 )
-int result = _access( filename, ACCESS_CHECK_EXISTANCE );
-
-return( result != -1 );
-
-#undef ACCESS_CHECK_EXISTANCE
-} /* check_file_exists() */
-
-
-/*******************************************************************
-*
 *   get_file_char_size()
 *
 *   DESCRIPTION:
@@ -466,9 +429,8 @@ return( result != -1 );
 
 static size_t get_file_char_size( const char *filename )
 {
-FILE *fhnd = NULL;
-errno_t err = fopen_s( &fhnd, filename, "r" );
-if( err )
+FILE *fhnd = fopen( filename, "r" );
+if( !fhnd )
     {
     return( 0 );
     }
@@ -515,7 +477,8 @@ ArgumentExpectations expectation = {};
 
 for( int i = 0; i < argc; i++ )
     {
-    strcpy_s( temp_argument, sizeof( temp_argument ), argv[ i ] );
+    strncpy( temp_argument, argv[ i ], sizeof( temp_argument ) - 1 );
+    temp_argument[ sizeof( temp_argument ) - 1 ] = '\0';
 
     if( strcmp( temp_argument, ARGUMENT_INPUT_DEFINITION ) == 0 )
         {
@@ -546,32 +509,61 @@ for( int i = 0; i < argc; i++ )
         {
         if( expectation.is_setting_asset_root )
             {
-            strcpy_s( arguments->assets_folder.str, sizeof( arguments->assets_folder.str ), temp_argument );
+            strncpy( arguments->assets_folder.str, temp_argument, sizeof( arguments->assets_folder.str ) );
+            arguments->assets_folder.str[ sizeof( arguments->assets_folder.str ) - 1 ] = '\0';
             arguments->assets_folder.is_valid = ( strlen( temp_argument ) > 0 );
             }
         else if( expectation.is_setting_definition )
             {
-            strcpy_s( arguments->definition.str, sizeof( arguments->definition.str ), temp_argument );
+            strncpy( arguments->definition.str, temp_argument, sizeof( arguments->definition.str ) );
+            arguments->definition.str[ sizeof( arguments->definition.str ) - 1 ] = '\0';
             arguments->definition.is_valid = ( strlen( temp_argument ) > 0 );
             }
         else if( expectation.is_setting_output_binary )
             {
-            sprintf_s( arguments->output_binary.str, sizeof( arguments->output_binary.str ), "%s\\%s", temp_argument, ASSET_FILE_BINARY_FILENAME );
-            strcpy_s( arguments->output_binary_folder.str, sizeof( arguments->output_binary_folder.str ), temp_argument );
+            snprintf( arguments->output_binary.str, sizeof( arguments->output_binary.str ), "%s/%s", temp_argument, ASSET_FILE_BINARY_FILENAME );
+            arguments->output_binary.str[ sizeof( arguments->output_binary.str ) - 1 ] = '\0';
+            strncpy( arguments->output_binary_folder.str, temp_argument, sizeof( arguments->output_binary_folder.str ) );
+            arguments->output_binary_folder.str[ sizeof( arguments->output_binary_folder.str ) - 1 ] = '\0';
             arguments->output_binary.is_valid = ( strlen( temp_argument ) > 0 );
             }
         else if( expectation.is_setting_output_bank_folder )
             {
-            strcpy_s( arguments->output_soundbank_folder.str, sizeof( arguments->output_soundbank_folder.str ), temp_argument );
+            strncpy( arguments->output_soundbank_folder.str, temp_argument, sizeof( arguments->output_soundbank_folder.str ) );
+            arguments->output_soundbank_folder.str[ sizeof( arguments->output_soundbank_folder.str ) - 1 ] = '\0';
             arguments->output_soundbank_folder.is_valid = ( strlen( temp_argument ) > 0 );
             }
         else if( expectation.is_setting_input_fonts_folder )
             {
-            strcpy_s( arguments->input_fonts_folder.str, sizeof( arguments->input_fonts_folder.str ), temp_argument );
+            strncpy( arguments->input_fonts_folder.str, temp_argument, sizeof( arguments->input_fonts_folder.str ) );
+            arguments->input_fonts_folder.str[ sizeof( arguments->input_fonts_folder.str ) - 1 ] = '\0';
             arguments->input_fonts_folder.is_valid = ( strlen( temp_argument ) > 0 );
             }
         }
     }
+
+} /* parse_args() */
+
+
+/*******************************************************************
+*
+*   print_args()
+*
+*   DESCRIPTION:
+*       Print the program arguments.
+*
+*******************************************************************/
+
+static void print_args( ProgramArguments *arguments )
+{
+print_info( "Called with the following arguments..." );
+print_info( "\tdefinition: \t%s", arguments->definition.str );
+print_info( "\toutput_binary: \t%s", arguments->output_binary.str );
+print_info( "\toutput_binary_folder: \t%s", arguments->output_binary_folder.str );
+print_info( "\tassets_folder: \t%s", arguments->assets_folder.str );
+print_info( "\toutput_soundbank_folder: \t%s", arguments->output_soundbank_folder.str );
+print_info( "\tinput_fonts_folder: \t%s", arguments->input_fonts_folder.str );
+print_info( "\n" );
 
 } /* parse_args() */
 
@@ -587,7 +579,7 @@ for( int i = 0; i < argc; i++ )
 
 static bool process_args( const ProgramArguments *arguments )
 {
-if( !check_file_exists( arguments->definition.str ) )
+if( !does_file_exist( arguments->definition.str ) )
     {
     print_error( "Input definition file was provided, but did not exist." );
     return( false );
@@ -650,13 +642,11 @@ if( asset_ids.empty() )
     }
 
 std::sort( asset_ids.begin(), asset_ids.end() );
-CreateDirectoryA( arguments->output_binary_folder.str, 0 );
+create_dir( arguments->output_binary_folder.str );
 if( !AssetFile_CreateForWrite( arguments->output_binary.str, &asset_ids[ 0 ], (uint32_t)asset_ids.size(), &output_file ) )
     {
-    std::vector<char> cwd_buffer;
-    cwd_buffer.resize( 1000 );
-    GetCurrentDirectoryA( (DWORD)cwd_buffer.size(), cwd_buffer.data() );
-    print_error( "Could not create output file at the path requested (%s), working directory = (%s).", arguments->output_binary.str, cwd_buffer.data() );
+    std::string curr_dir = get_current_dir_str();
+    print_error( "Could not create output file at the path requested (%s), working directory = (%s).", arguments->output_binary.str, curr_dir.c_str() );
     goto error_cleanup;
     }
 
@@ -693,17 +683,6 @@ for( auto &entry : visitor.asset_map )
         case ASSET_FILE_ASSET_KIND_SOUND_MUSIC_CLIP:
             music_clip_pairs.push_back( { entry.second.filename.c_str(), entry.second.asset_id_str.c_str() });
             break;
-
-        //case ASSET_FILE_ASSET_KIND_SHADER:
-        //    this_stats = {};
-        //    if( !ExportShader_Export( entry.first, entry.second.filename.c_str(), entry.second.shader_target.c_str(), entry.second.shader_entry_point.c_str(), &this_stats, &output_file) )
-        //        {
-        //        print_error( "Failed to load shader (%s).  Exiting...", entry.second.filename.c_str() );
-        //        }
-
-        //    shaders_stats.shaders_written++;
-        //    shaders_stats.written_sz += this_stats.written_sz;
-        //    break;
 
         case ASSET_FILE_ASSET_KIND_SOUND_SAMPLE:
             sound_sample_pairs.push_back( { entry.second.filename.c_str(), entry.second.asset_id_str.c_str() } );
@@ -763,9 +742,8 @@ return( success );
 
 static bool read_json_as_string( const char *filename, const size_t sz, char *out )
 {
-FILE *fhnd = NULL;
-errno_t err = fopen_s( &fhnd, filename, "r" );
-if( err )
+FILE *fhnd = fopen( filename, "r" );
+if( !fhnd )
     {
     return( false );
     }
@@ -832,7 +810,7 @@ if( fonts )
         font_filename_str.append( font_filename->valuestring );
         font_filename_str = resolve_environments( font_filename_str.c_str() );
 
-        if( !check_file_exists( font_filename_str.c_str() ) )
+        if( !does_file_exist( font_filename_str.c_str() ) )
             {
             print_error( "Could not find font for filename %s (%s)", font_filename_str.c_str(), cJSON_Print( font ) );
             return( false );
@@ -881,7 +859,7 @@ if( models )
       
         std::string model_filename_str( basefolder );
         model_filename_str.append( model_filename->valuestring );
-        if( !check_file_exists( model_filename_str.c_str() ) )
+        if( !does_file_exist( model_filename_str.c_str() ) )
             {
             print_error( "Could not find model for filename %s (%s)", model_filename_str.c_str(), cJSON_Print( model ) );
             return( false );
@@ -993,7 +971,7 @@ if( textures )
       
         std::string texture_filename_str( basefolder );
         texture_filename_str.append( texture_filename->valuestring );
-        if( !check_file_exists( texture_filename_str.c_str() ) )
+        if( !does_file_exist( texture_filename_str.c_str() ) )
             {
             print_error( "Could not find texture for filename %s (%s)", texture_filename_str.c_str(), cJSON_Print( texture ) );
             return( false );
@@ -1042,7 +1020,7 @@ if( sound_samples )
       
         std::string sound_sample_filename_str( basefolder );
         sound_sample_filename_str.append( sound_sample_filename->valuestring );
-        if( !check_file_exists( sound_sample_filename_str.c_str() ) )
+        if( !does_file_exist( sound_sample_filename_str.c_str() ) )
             {
             print_error( "Could not find sound sample for filename %s (%s)", sound_sample_filename_str.c_str(), cJSON_Print( sound_sample ) );
             return( false );
@@ -1091,7 +1069,7 @@ if( music_clips )
       
         std::string music_clip_filename_str( basefolder );
         music_clip_filename_str.append( music_clip_filename->valuestring );
-        if( !check_file_exists( music_clip_filename_str.c_str() ) )
+        if( !does_file_exist( music_clip_filename_str.c_str() ) )
             {
             print_error( "Could not find music clip for filename %s (%s)", music_clip_filename_str.c_str(), cJSON_Print( music_clip ) );
             return( false );

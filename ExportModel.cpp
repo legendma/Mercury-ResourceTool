@@ -1,5 +1,5 @@
 #include <cassert>
-#include <assimp/importer.hpp>
+#include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
@@ -216,7 +216,7 @@ for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 		aiString diffuse_filename;
 		if( material->Get( AI_MATKEY_TEXTURE( aiTextureType_DIFFUSE, 0 ), diffuse_filename ) != aiReturn_SUCCESS )
 			{
-			print_error( "ExportModel_Export() unable to find diffuse texture (%s).", diffuse_filename );
+			print_error( "ExportModel_Export() unable to find diffuse texture (%s).", diffuse_filename.C_Str() );
 			return( false );
 			}
 

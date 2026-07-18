@@ -63,9 +63,9 @@ PrepareBank( music_clips, music_pairs, music_subsounds, filename_storage );
 
 /* build the banks! */
 std::string samples_filename( bank_output_folder );
-samples_filename.append( "\\" ASSET_FILE_SOUND_BANK_FILENAME );
+samples_filename.append( "/" ASSET_FILE_SOUND_BANK_FILENAME );
 std::string music_filename( bank_output_folder );
-music_filename.append( "\\" ASSET_FILE_MUSIC_BANK_FILENAME );
+music_filename.append( "/" ASSET_FILE_MUSIC_BANK_FILENAME );
 if( !BuildBank( samples_filename, sample_subsounds )
  || !BuildBank( music_filename,   music_subsounds ) )
     {

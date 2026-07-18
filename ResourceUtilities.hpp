@@ -90,6 +90,21 @@ template <typename T> struct dyn_array : std::vector<T>
 
 /*******************************************************************
 *
+*   _countof
+*
+*   DESCRIPTION:
+*       Find count of array.
+*
+*******************************************************************/
+
+#if !defined( _countof )
+#define _countof( _arr ) \
+    ( sizeof( _arr ) / sizeof( *( _arr ) ) )
+#endif
+
+
+/*******************************************************************
+*
 *   ensure()
 *
 *   DESCRIPTION:
@@ -296,3 +311,7 @@ for( int i = 0; str[ i ] != 0; i++ )
 return( false );
 
 } /* str_contains_str() */
+
+void create_dir( const char *name );
+bool does_file_exist( const char *filename );
+std::string get_current_dir_str();

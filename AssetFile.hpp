@@ -3,6 +3,8 @@
 #include <cstdio>
 #include <cstring>
 
+#include "AssetFileUtilities.hpp"
+
 #define ASSET_FILE_MAX_NAME_STR_LEN ( 60 )
 
 #define ASSET_FILE_MODEL_VERTEX_UV_COUNT \
@@ -28,7 +30,7 @@ typedef struct _AssetFileNameString
     char                str[ ASSET_FILE_MAX_NAME_STR_LEN + 1 ];
     } AssetFileNameString;
 
-typedef uint32_t AssetFileAssetId;
+typedef u32 AssetFileAssetId;
 typedef enum _AssetFileAssetKind
     {
     ASSET_FILE_ASSET_KIND_INVALID,
@@ -43,20 +45,20 @@ typedef enum _AssetFileAssetKind
 
 typedef struct _AssetFileFontGlyph
     {
-    uint8_t             glyph;      /* glyph ascii code             */
-    float               width;      /* glyph width in pixels        */
-    float               height;     /* glyph heigh in pixels        */
-    float               top_left_x; /* pen x offset to top-left     */
-    float               top_left_y; /* pen y offset to top-left     */
-    float               bottom_right_x;
+    u8                  glyph;      /* glyph ascii code             */
+    f32                 width;      /* glyph width in pixels        */
+    f32                 height;     /* glyph heigh in pixels        */
+    f32                 top_left_x; /* pen x offset to top-left     */
+    f32                 top_left_y; /* pen y offset to top-left     */
+    f32                 bottom_right_x;
                                     /* pen x offset to bottom-right */
-    float               bottom_right_y;
+    f32                 bottom_right_y;
                                     /* pen y offset to bottom-right */
-    float               u0;         /* top-left UV x coordinate     */
-    float               v0;         /* top-left UV y coordinate     */
-    float               u1;         /* bottom-right UV x coordinate */
-    float               v1;         /* bottom-right UV y coordinate */
-    float               h_advance;  /* horizontal pen advancement   */
+    f32                 u0;         /* top-left UV x coordinate     */
+    f32                 v0;         /* top-left UV y coordinate     */
+    f32                 u1;         /* bottom-right UV x coordinate */
+    f32                 v1;         /* bottom-right UV y coordinate */
+    f32                 h_advance;  /* horizontal pen advancement   */
     } AssetFileFontGlyph;
 
 typedef enum _AssetFileModelElementKind
@@ -79,7 +81,7 @@ typedef enum
     ASSET_FILE_MODEL_TEXTURE_COUNT
     } AssetFileModelTexture;
 
-typedef uint8_t AssetFileModelMaterialBits;
+typedef u8 AssetFileModelMaterialBits;
 enum
     {
     /* textures */
@@ -95,24 +97,24 @@ enum
 
 typedef struct _AssetFileModelVertex
     {
-    float               x;          /* vertex position              */
-    float               y;          /* vertex position              */
-    float               z;          /* vertex position              */
-    float               u0;         /* first texture coordinate     */
-    float               v0;         /* first texture coordinate     */
+    f32                 x;          /* vertex position              */
+    f32                 y;          /* vertex position              */
+    f32                 z;          /* vertex position              */
+    f32                 u0;         /* first texture coordinate     */
+    f32                 v0;         /* first texture coordinate     */
     } AssetFileModelVertex;
 
-typedef uint32_t AssetFileModelIndex; /* used to index vertices/
+typedef u32 AssetFileModelIndex; /* used to index vertices/
                                          meshes/nodes/materials     */
 
 typedef struct _AssetFileModelNode
     {
-    float               transform[ 4 * 4 ];
+    f32                 transform[ 4 * 4 ];
                                     /* row major index              */
     AssetFileModelIndex child_meshes[ ASSET_FILE_MODEL_NODE_CHILD_MESH_MAX_COUNT ];
     AssetFileModelIndex child_nodes[ ASSET_FILE_MODEL_NODE_CHILD_NODE_MAX_COUNT ];
-    uint16_t            child_mesh_count;
-    uint16_t            child_node_count;
+    u16                 child_mesh_count;
+    u16                 child_node_count;
     } AssetFileModelNode;
 
 typedef struct _AssetFileModelMaterial
@@ -126,82 +128,82 @@ typedef struct _AssetFileModelMaterial
 typedef struct _AssetFileSoundPair
     {
     AssetFileAssetId    asset_id;       /* ID of the sound          */
-    uint32_t            subsound_index; /* index within bank        */
+    u32                 subsound_index; /* index within bank        */
     } AssetFileSoundPair; 
 
 typedef struct _AssetFileTextureExtent
     {
     AssetFileAssetId    texture_id; /* ID of the texture            */
-    uint16_t            width;      /* texture width                */
-    uint16_t            height;     /* texture height               */
+    u16                 width;      /* texture width                */
+    u16                 height;     /* texture height               */
     } AssetFileTextureExtent;
 
 typedef struct _AssetFileWriter
     {
-    FILE               *fhnd;       /* file handle                  */
-    uint32_t            caret;      /* working write location       */
-    uint32_t            table_cnt;  /* number entries in table      */
+    fhnd                hnd;        /* file handle                  */
+    u32                 caret;      /* working write location       */
+    u32                 table_cnt;  /* number entries in table      */
     AssetFileAssetKind  kind;       /* asset kind under write       */
-    uint32_t            asset_start;/* start of asset under write   */
-    uint32_t            model_vertices_written;
-    uint32_t            model_indices_written;
+    u32                 asset_start;/* start of asset under write   */
+    u32                 model_vertices_written;
+    u32                 model_indices_written;
     } AssetFileWriter;
 
 typedef struct _AssetFileReader
     {
-    FILE               *fhnd;       /* file handle                  */
+    fhnd                hnd;        /* file handle                  */
     AssetFileAssetKind  kind;       /* asset kind under read        */
-    uint32_t            asset_start;/* start of asset under read    */
-    uint32_t            table_cnt;  /* number entries in table      */
+    u32                 asset_start;/* start of asset under read    */
+    u32                 table_cnt;  /* number entries in table      */
     } AssetFileReader;
 
 
-bool   AssetFile_BeginReadingAsset( const AssetFileAssetId id, const AssetFileAssetKind kind, AssetFileReader *input );
-bool   AssetFile_BeginWritingAsset( const AssetFileAssetId id, const AssetFileAssetKind kind, AssetFileWriter *output );
-bool   AssetFile_BeginWritingModelElement( const AssetFileModelElementKind kind, const AssetFileModelIndex element_index, AssetFileWriter *output );
-bool   AssetFile_CloseForRead( AssetFileReader *input );
-bool   AssetFile_CloseForWrite( AssetFileWriter *output );
-bool   AssetFile_CreateForWrite( const char *filename, const AssetFileAssetId *ids, const uint32_t ids_count, AssetFileWriter *output );
-bool   AssetFile_DescribeFont( const uint8_t oversample_x, const uint8_t oversample_y, const uint16_t texture_width, const uint16_t texture_height, const uint32_t texture_sz, const uint8_t *pixels, const uint16_t glyph_cnt, const uint8_t *glyph_codes, AssetFileWriter *output );
-bool   AssetFile_DescribeModel( const uint32_t node_count, const uint32_t mesh_count, const uint32_t material_count, AssetFileWriter *output );
-bool   AssetFile_DescribeModelMaterial( const AssetFileModelMaterialBits maps, AssetFileWriter *output );
-bool   AssetFile_DescribeModelMesh( const uint32_t material_element_index, const uint32_t vertex_cnt, const uint32_t index_cnt, AssetFileWriter *output );
-bool   AssetFile_DescribeModelNode( const uint32_t node_count, const float *mat4x4, const uint32_t mesh_count, AssetFileWriter *output );
-bool   AssetFile_DescribeShader( const uint32_t byte_size, AssetFileWriter *output );
-bool   AssetFile_DescribeTexture( const uint32_t byte_size, AssetFileWriter *output );
-bool   AssetFile_DescribeTexture2( const uint32_t channel_cnt, const uint32_t width, const uint32_t height, const uint32_t byte_size, AssetFileWriter *output );
-bool   AssetFile_DescribeTextureExtents( const uint16_t element_cnt, AssetFileWriter *output );
-bool   AssetFile_EndReadingAsset( AssetFileReader *input );
-bool   AssetFile_EndWritingAsset( AssetFileWriter *output );
-bool   AssetFile_EndWritingModel( const uint32_t root_node_element, AssetFileWriter *output );
-size_t AssetFile_GetWriteSize( const AssetFileWriter *output );
-bool   AssetFile_OpenForRead( const char *filename, AssetFileReader *input );
-bool   AssetFile_ReadFontGlyphs( const uint16_t glyph_capacity, AssetFileFontGlyph *glyphs, AssetFileReader *input );
-bool   AssetFile_ReadFontTexture( const uint32_t buffer_sz, uint8_t *pixels, uint16_t *width, uint16_t *height, AssetFileReader *input );
-bool   AssetFile_ReadFontStorageRequirements( uint16_t *glyph_cnt, uint32_t *texture_sz, AssetFileReader *input );
-bool   AssetFile_ReadModelMaterials( const uint32_t material_capacity, uint32_t *material_count, AssetFileModelMaterial *materials, AssetFileReader *input );
-bool   AssetFile_ReadModelMeshIndices( const uint32_t mesh_index, const uint32_t index_capacity, uint32_t *index_count, AssetFileModelIndex *indices, AssetFileReader *input );
-bool   AssetFile_ReadModelMeshVertices( const uint32_t mesh_index, const uint32_t vertex_capacity, AssetFileModelIndex *material_index, uint32_t *vertex_count, AssetFileModelVertex *vertices, AssetFileReader *input );
-bool   AssetFile_ReadModelNodes( const uint32_t node_capacity, uint32_t *node_count, AssetFileModelNode *nodes, AssetFileReader *input );
-bool   AssetFile_ReadModelStorageRequirements( uint32_t *vertex_count, uint32_t *index_count, uint32_t *mesh_count, uint32_t *node_count, uint32_t *material_count, AssetFileReader *input );
-bool   AssetFile_ReadShaderBinary( const uint32_t buffer_sz, uint32_t *read_sz, uint8_t *buffer, AssetFileReader *input );
-bool   AssetFile_ReadSoundPairs( uint16_t num_pairs, AssetFileSoundPair *sound_pairs, AssetFileReader *input );
-bool   AssetFile_ReadSoundPairsStorageRequirements( uint16_t *num_elements, AssetFileReader *input );
-bool   AssetFile_ReadShaderStorageRequirements( uint32_t *byte_count, AssetFileReader *input );
-bool   AssetFile_ReadTextureExtentsStorageRequirements( uint16_t *num_elements, AssetFileReader *input );
-bool   AssetFile_ReadTextureBinary( const uint32_t buffer_sz, uint32_t *read_sz, uint8_t *buffer, AssetFileReader *input );
-bool   AssetFile_ReadTextureStorageRequirements( uint32_t *channel_cnt, uint32_t *width, uint32_t *height, uint32_t *byte_count, AssetFileReader *input );
-bool   AssetFile_ReadTextureExtents( const uint16_t output_cnt, AssetFileTextureExtent *out_elements, AssetFileReader *input );
-bool   AssetFile_ReadTextureExtentsStorageRequirements( uint16_t *element_cnt, AssetFileReader *input );
-bool   AssetFile_WriteFontGlyph( const uint8_t glyph, const uint16_t u0, const uint16_t v0, const uint16_t u1, const uint16_t v1, const float pen_dx, const float pen_dy, const float pen_xadvance, AssetFileWriter *output );
-bool   AssetFile_WriteModelMaterialTextureMaps( const AssetFileAssetId *asset_ids, const uint8_t count, AssetFileWriter *output );
-bool   AssetFile_WriteModelMeshIndex( const AssetFileModelIndex index, AssetFileWriter *output );
-bool   AssetFile_WriteModelMeshVertex( const AssetFileModelVertex *vertex, AssetFileWriter *output );
-bool   AssetFile_WriteModelNodeChildElements( const AssetFileModelIndex *element_ids, const uint32_t count, AssetFileWriter *output );
-bool   AssetFile_WriteShader( const uint8_t *blob, const uint32_t blob_size, AssetFileWriter *output );
-bool   AssetFile_WriteSoundPairs( const AssetFileSoundPair *sound_pair, const uint16_t num_pairs, AssetFileWriter *output );
-bool   AssetFile_WriteTexture( const uint8_t *image, const uint32_t image_size, AssetFileWriter *output );
-bool   AssetFile_WriteTextureExtent( const AssetFileAssetId id, const uint16_t width, const uint16_t height, AssetFileWriter *output );
+b8  AssetFile_BeginReadingAsset( const AssetFileAssetId id, const AssetFileAssetKind kind, AssetFileReader *input );
+b8  AssetFile_BeginWritingAsset( const AssetFileAssetId id, const AssetFileAssetKind kind, AssetFileWriter *output );
+b8  AssetFile_BeginWritingModelElement( const AssetFileModelElementKind kind, const AssetFileModelIndex element_index, AssetFileWriter *output );
+b8  AssetFile_CloseForRead( AssetFileReader *input );
+b8  AssetFile_CloseForWrite( AssetFileWriter *output );
+b8  AssetFile_CreateForWrite( const char *filename, const AssetFileAssetId *ids, const u32 ids_count, AssetFileWriter *output );
+b8  AssetFile_DescribeFont( const u8 oversample_x, const u8 oversample_y, const u16 texture_width, const u16 texture_height, const u32 texture_sz, const u8 *pixels, const u16 glyph_cnt, const u8 *glyph_codes, AssetFileWriter *output );
+b8  AssetFile_DescribeModel( const u32 node_count, const u32 mesh_count, const u32 material_count, AssetFileWriter *output );
+b8  AssetFile_DescribeModelMaterial( const AssetFileModelMaterialBits maps, AssetFileWriter *output );
+b8  AssetFile_DescribeModelMesh( const u32 material_element_index, const u32 vertex_cnt, const u32 index_cnt, AssetFileWriter *output );
+b8  AssetFile_DescribeModelNode( const u32 node_count, const f32 *mat4x4, const u32 mesh_count, AssetFileWriter *output );
+b8  AssetFile_DescribeShader( const u32 byte_size, AssetFileWriter *output );
+b8  AssetFile_DescribeTexture( const u32 byte_size, AssetFileWriter *output );
+b8  AssetFile_DescribeTexture2( const u32 channel_cnt, const u32 width, const u32 height, const u32 byte_size, AssetFileWriter *output );
+b8  AssetFile_DescribeTextureExtents( const u16 element_cnt, AssetFileWriter *output );
+b8  AssetFile_EndReadingAsset( AssetFileReader *input );
+b8  AssetFile_EndWritingAsset( AssetFileWriter *output );
+b8  AssetFile_EndWritingModel( const u32 root_node_element, AssetFileWriter *output );
+u64 AssetFile_GetWriteSize( const AssetFileWriter *output );
+b8  AssetFile_OpenForRead( const char *filename, AssetFileReader *input );
+b8  AssetFile_ReadFontGlyphs( const u16 glyph_capacity, AssetFileFontGlyph *glyphs, AssetFileReader *input );
+b8  AssetFile_ReadFontTexture( const u32 buffer_sz, u8 *pixels, u16 *width, u16 *height, AssetFileReader *input );
+b8  AssetFile_ReadFontStorageRequirements( u16 *glyph_cnt, u32 *texture_sz, AssetFileReader *input );
+b8  AssetFile_ReadModelMaterials( const u32 material_capacity, u32 *material_count, AssetFileModelMaterial *materials, AssetFileReader *input );
+b8  AssetFile_ReadModelMeshIndices( const u32 mesh_index, const u32 index_capacity, u32 *index_count, AssetFileModelIndex *indices, AssetFileReader *input );
+b8  AssetFile_ReadModelMeshVertices( const u32 mesh_index, const u32 vertex_capacity, AssetFileModelIndex *material_index, u32 *vertex_count, AssetFileModelVertex *vertices, AssetFileReader *input );
+b8  AssetFile_ReadModelNodes( const u32 node_capacity, u32 *node_count, AssetFileModelNode *nodes, AssetFileReader *input );
+b8  AssetFile_ReadModelStorageRequirements( u32 *vertex_count, u32 *index_count, u32 *mesh_count, u32 *node_count, u32 *material_count, AssetFileReader *input );
+b8  AssetFile_ReadShaderBinary( const u32 buffer_sz, u32 *read_sz, byte *buffer, AssetFileReader *input );
+b8  AssetFile_ReadSoundPairs( u16 num_pairs, AssetFileSoundPair *sound_pairs, AssetFileReader *input );
+b8  AssetFile_ReadSoundPairsStorageRequirements( u16 *num_elements, AssetFileReader *input );
+b8  AssetFile_ReadShaderStorageRequirements( u32 *byte_count, AssetFileReader *input );
+b8  AssetFile_ReadTextureExtentsStorageRequirements( u16 *num_elements, AssetFileReader *input );
+b8  AssetFile_ReadTextureBinary( const u32 buffer_sz, u32 *read_sz, byte *buffer, AssetFileReader *input );
+b8  AssetFile_ReadTextureStorageRequirements( u32 *channel_cnt, u32 *width, u32 *height, u32 *byte_count, AssetFileReader *input );
+b8  AssetFile_ReadTextureExtents( const u16 output_cnt, AssetFileTextureExtent *out_elements, AssetFileReader *input );
+b8  AssetFile_ReadTextureExtentsStorageRequirements( u16 *element_cnt, AssetFileReader *input );
+b8  AssetFile_WriteFontGlyph( const u8 glyph, const u16 u0, const u16 v0, const u16 u1, const u16 v1, const f32 pen_dx, const f32 pen_dy, const f32 pen_xadvance, AssetFileWriter *output );
+b8  AssetFile_WriteModelMaterialTextureMaps( const AssetFileAssetId *asset_ids, const u8 count, AssetFileWriter *output );
+b8  AssetFile_WriteModelMeshIndex( const AssetFileModelIndex index, AssetFileWriter *output );
+b8  AssetFile_WriteModelMeshVertex( const AssetFileModelVertex *vertex, AssetFileWriter *output );
+b8  AssetFile_WriteModelNodeChildElements( const AssetFileModelIndex *element_ids, const u32 count, AssetFileWriter *output );
+b8  AssetFile_WriteShader( const byte *blob, const u32 blob_size, AssetFileWriter *output );
+b8  AssetFile_WriteSoundPairs( const AssetFileSoundPair *sound_pair, const u16 num_pairs, AssetFileWriter *output );
+b8  AssetFile_WriteTexture( const byte *image, const u32 image_size, AssetFileWriter *output );
+b8  AssetFile_WriteTextureExtent( const AssetFileAssetId id, const u16 width, const u16 height, AssetFileWriter *output );
 
 
 /*******************************************************************
@@ -213,15 +215,15 @@ bool   AssetFile_WriteTextureExtent( const AssetFileAssetId id, const uint16_t w
 *
 *******************************************************************/
 
-static inline uint32_t AssetFile_FNV1a( const void *data, const uint32_t sz )
+static inline u32 AssetFile_FNV1a( const void *data, const u32 sz )
 {
-static const uint32_t SEED  = 0x811c9dc5;
-static const uint32_t PRIME = 0x01000193;
+static const u32 SEED  = 0x811c9dc5;
+static const u32 PRIME = 0x01000193;
 
-const uint8_t *bytes = (uint8_t *)data;
+const byte *bytes = (byte*)data;
 
-uint32_t ret = SEED;
-for( uint32_t i = 0; i < sz; i++ )
+u32 ret = SEED;
+for( u32 i = 0; i < sz; i++ )
     {
     ret ^= bytes[ i ];
     ret *= PRIME;
@@ -241,7 +243,7 @@ return( ret );
 *
 *******************************************************************/
 
-static inline AssetFileAssetId AssetFile_MakeAssetIdFromName( const char *name, const uint32_t name_length )
+static inline AssetFileAssetId AssetFile_MakeAssetIdFromName( const char *name, const u32 name_length )
 {
 return( AssetFile_FNV1a( name, name_length ) );
 
@@ -258,9 +260,9 @@ return( AssetFile_FNV1a( name, name_length ) );
 *
 *******************************************************************/
 
-static inline uint32_t AssetFile_MakeAssetIdFromName2( const char *name )
+static inline u32 AssetFile_MakeAssetIdFromName2( const char *name )
 {
-return( AssetFile_MakeAssetIdFromName( name, (uint32_t)strlen( name ) ) );
+return( AssetFile_MakeAssetIdFromName( name, (u32)strlen( name ) ) );
 
 } /* AssetFile_MakeAssetIdFromName2() */
 
@@ -276,7 +278,7 @@ return( AssetFile_MakeAssetIdFromName( name, (uint32_t)strlen( name ) ) );
 
 static AssetFileAssetId inline AssetFile_MakeAssetIdFromNameString( const AssetFileNameString *name )
 {
-return( AssetFile_MakeAssetIdFromName( name->str, (uint32_t)strlen( name->str ) ) );
+return( AssetFile_MakeAssetIdFromName( name->str, (u32)strlen( name->str ) ) );
 
 } /* AssetFile_MakeAssetIdFromNameString() */
 
@@ -293,7 +295,8 @@ return( AssetFile_MakeAssetIdFromName( name->str, (uint32_t)strlen( name->str ) 
 static inline AssetFileNameString AssetFile_CopyNameString( const char *name )
 {
 AssetFileNameString     ret = {};
-strcpy_s( ret.str, sizeof( ret.str ), name );
+strncpy( ret.str, name, sizeof( ret.str ) - 1 );
+ret.str[ sizeof( ret.str ) - 1 ] = '\0';
 
 return( ret );
 

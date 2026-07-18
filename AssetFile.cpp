@@ -9,64 +9,64 @@
     ( ( _a << 0 ) | ( _b << 8 ) | ( _c << 16 ) | (_d << 24 ) )
         
 
-static const uint32_t ASSET_FILE_MAGIC = make_fourcc( 'M', 'e', 'r', 'c' );
+static const u32 ASSET_FILE_MAGIC = make_fourcc( 'M', 'e', 'r', 'c' );
 
 typedef struct
     {
-    uint32_t            magic;      /* magic sentinel number        */
-    uint32_t            table_cnt;  /* number entries in table      */
+    u32                 magic;      /* magic sentinel number        */
+    u32                 table_cnt;  /* number entries in table      */
     } AssetFileHeader;
 
 typedef struct
     {
     AssetFileAssetId    id;         /* asset ID hash                */
     AssetFileAssetKind  kind;       /* type of asset                */
-    uint32_t            starts_at;  /* file offset to start of asset*/
+    u32                 starts_at;  /* file offset to start of asset*/
     } AssetFileTableRow;
 
 typedef struct
     {
-    uint8_t             oversample_x;
+    u8                  oversample_x;
                                     /* horizontal texels/pixels     */
-    uint8_t             oversample_y;
+    u8                  oversample_y;
                                     /* vertical texels/pixels       */
-    uint16_t            texture_width;
+    u16                 texture_width;
                                     /* texture extent width         */
-    uint16_t            texture_height;
+    u16                 texture_height;
                                     /* texture extent height        */
-    uint16_t            glyph_cnt;  /* number glyphs in font        */
-    uint32_t            texture_sz; /* texture data byte count      */
-    uint32_t            glyphs_starts_at;
+    u16                 glyph_cnt;  /* number glyphs in font        */
+    u32                 texture_sz; /* texture data byte count      */
+    u32                 glyphs_starts_at;
                                     /* file offset to glyph data    */
-    uint32_t            texture_starts_at;
+    u32                 texture_starts_at;
                                     /* file offset to texture data  */
     } FontHeader;
 
 typedef struct
     {
-    uint8_t             glyph;      /* glyph code                   */
-    uint16_t            u0;         /* uv top-left x (pixels)       */
-    uint16_t            v0;         /* uv top-left y (pixels)       */
-    uint16_t            u1;         /* uv bottom-right x (pixels)   */
-    uint16_t            v1;         /* uv bottom-right y (pixels)   */
-    float               h_advance;  /* pen horizontal advancement   */
-    float               pen_offset_x;
+    u8                  glyph;      /* glyph code                   */
+    u16                 u0;         /* uv top-left x (pixels)       */
+    u16                 v0;         /* uv top-left y (pixels)       */
+    u16                 u1;         /* uv bottom-right x (pixels)   */
+    u16                 v1;         /* uv bottom-right y (pixels)   */
+    f32                 h_advance;  /* pen horizontal advancement   */
+    f32                 pen_offset_x;
                                     /* horz offset from pen position*/
-    float               pen_offset_y;
+    f32                 pen_offset_y;
                                     /* vert offset from pen position*/
     } FontGlyphHeader;
 
 typedef struct
     {
-    uint32_t            node_count; /* number of nodes              */
-    uint32_t            mesh_count; /* number of meshes             */
-    uint32_t            material_cnt;
+    u32                 node_count; /* number of nodes              */
+    u32                 mesh_count; /* number of meshes             */
+    u32                 material_cnt;
                                     /* number unique materials      */
-    uint32_t            root_node_element;
+    u32                 root_node_element;
                                     /* element index of root node   */
-    uint32_t            total_vertex_count;
+    u32                 total_vertex_count;
                                     /* number of vertices in model  */
-    uint32_t            total_index_count;
+    u32                 total_index_count;
                                     /* number of indices in model   */
     } ModelHeader;
 
@@ -78,16 +78,16 @@ typedef struct
 
 typedef struct
     {
-    uint32_t            vertex_cnt; /* number of vertices           */
-    uint32_t            index_cnt;  /* number of indices            */
-    uint32_t            material;   /* material element index       */
+    u32                 vertex_cnt; /* number of vertices           */
+    u32                 index_cnt;  /* number of indices            */
+    u32                 material;   /* material element index       */
     } ModelMeshHeader;
 
 typedef struct
     {
-    uint32_t            node_count; /* number of child nodes        */
-    uint32_t            mesh_count; /* number of child meshes       */
-    float               transform[ 16 ];
+    u32                 node_count; /* number of child nodes        */
+    u32                 mesh_count; /* number of child meshes       */
+    f32                 transform[ 16 ];
                                     /* row major 4x4 matrix         */
     } ModelNodeHeader;
 
@@ -95,32 +95,32 @@ typedef struct
     {
     AssetFileModelElementKind
                         kind;       /* model element kind           */
-    uint32_t            starts_at;  /* file offset to element start */
+    u32                 starts_at;  /* file offset to element start */
     } ModelTableRow;
 
 typedef struct
     {
-    uint32_t            byte_size;  /* byte code blob size          */
+    u32                 byte_size;  /* byte code blob size          */
     } ShaderHeader;
 
 typedef struct
     {
-    uint32_t            channel_cnt;/* number of color channels     */
-    uint32_t            width;      /* image width                  */
-    uint32_t            height;     /* image height                 */
-    uint32_t            byte_size;  /* compressed image blob size   */
+    u32                 channel_cnt;/* number of color channels     */
+    u32                 width;      /* image width                  */
+    u32                 height;     /* image height                 */
+    u32                 byte_size;  /* compressed image blob size   */
     } TextureHeader;
 
 typedef struct
     {
-    uint16_t            texture_cnt;/* number of textures in table  */
+    u16                 texture_cnt;/* number of textures in table  */
     } TextureExtentHeader;
 
 
-static bool JumpToAssetInTable( const AssetFileAssetId id, const uint32_t table_count, FILE *file );
-static bool JumpToModelMaterial( const uint32_t asset_start, const uint32_t material_index, FILE *file );
-static bool JumpToModelMesh( const uint32_t asset_start, const uint32_t mesh_index, FILE *file );
-static bool JumpToModelNode( const uint32_t asset_start, const uint32_t node_index, FILE *file );
+static b8 JumpToAssetInTable( const AssetFileAssetId id, const u32 table_count, fhnd file );
+static b8 JumpToModelMaterial( const u32 asset_start, const u32 material_index, fhnd file );
+static b8 JumpToModelMesh( const u32 asset_start, const u32 mesh_index, fhnd file );
+static b8 JumpToModelNode( const u32 asset_start, const u32 node_index, fhnd file );
 
 
 /*******************************************************************
@@ -133,37 +133,37 @@ static bool JumpToModelNode( const uint32_t asset_start, const uint32_t node_ind
 *
 *******************************************************************/
 
-bool AssetFile_BeginReadingAsset( const AssetFileAssetId id, const AssetFileAssetKind kind, AssetFileReader *input )
+b8 AssetFile_BeginReadingAsset( const AssetFileAssetId id, const AssetFileAssetKind kind, AssetFileReader *input )
 {
 input->kind        = ASSET_FILE_ASSET_KIND_INVALID;
 input->asset_start = 0;
 
-if( !JumpToAssetInTable( id, input->table_cnt, input->fhnd ) )
+if( !JumpToAssetInTable( id, input->table_cnt, input->hnd ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 AssetFileTableRow row = {};
-if( fread_s( &row, sizeof(row), 1, sizeof(row), input->fhnd ) != sizeof(row) )
+if( !file_read_struct( input->hnd, &row ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 assert( row.id == id );
 if( row.kind != kind )
     {
-    return( false );
+    return( FALSE );
     }
 
-if( fseek( input->fhnd, row.starts_at, SEEK_SET ) )
+if( !file_seek( input->hnd, row.starts_at ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 input->asset_start = row.starts_at;
 input->kind = kind;
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_BeginReadingAsset() */
 
@@ -178,14 +178,14 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_BeginWritingAsset( const AssetFileAssetId id, const AssetFileAssetKind kind, AssetFileWriter *output )
+b8 AssetFile_BeginWritingAsset( const AssetFileAssetId id, const AssetFileAssetKind kind, AssetFileWriter *output )
 {
 output->kind        = ASSET_FILE_ASSET_KIND_INVALID;
 output->asset_start = 0;
 
-if( !JumpToAssetInTable( id, output->table_cnt, output->fhnd ) )
+if( !JumpToAssetInTable( id, output->table_cnt, output->hnd ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 output->asset_start            = output->caret;
@@ -198,13 +198,13 @@ row.id        = id;
 row.kind      = kind;
 row.starts_at = output->caret;
 
-ensure( fwrite( &row, 1, sizeof(row), output->fhnd ) == sizeof(row) );
-if( fseek( output->fhnd, (long)output->caret, SEEK_SET ) )
+ensure( file_write_struct( output->hnd, &row ) );
+if( !file_seek( output->hnd, output->caret ) )
     {
-    return( false );
+    return( FALSE );
     }
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_BeginWritingAsset() */
 
@@ -218,9 +218,9 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_CloseForRead( AssetFileReader *input )
+b8 AssetFile_CloseForRead( AssetFileReader *input )
 {
-bool ret = !fclose( input->fhnd );
+b8 ret = file_close( input->hnd );
 *input = {};
 
 return( ret );
@@ -237,9 +237,9 @@ return( ret );
 *
 *******************************************************************/
 
-bool AssetFile_CloseForWrite( AssetFileWriter *output )
+b8 AssetFile_CloseForWrite( AssetFileWriter *output )
 {
-bool ret = !fclose( output->fhnd );
+b8 ret = file_close( output->hnd );
 *output = {};
 
 return( ret );
@@ -257,34 +257,34 @@ return( ret );
 *
 *******************************************************************/
 
-bool AssetFile_BeginWritingModelElement( const AssetFileModelElementKind kind, const AssetFileModelIndex element_index, AssetFileWriter *output )
+b8 AssetFile_BeginWritingModelElement( const AssetFileModelElementKind kind, const AssetFileModelIndex element_index, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start )
     {
-    return( false );
+    return( FALSE );
     }
 
-uint32_t row_location = output->asset_start
-                      + (uint32_t)sizeof(ModelHeader)
-                      + element_index * (uint32_t)sizeof(ModelTableRow);
+u32 row_location = output->asset_start
+                 + (u32)sizeof(ModelHeader)
+                 + element_index * (u32)sizeof(ModelTableRow);
 
-if( fseek( output->fhnd, row_location, SEEK_SET ) )
+if( !file_seek( output->hnd, row_location ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelTableRow row = {};
 row.starts_at = output->caret;
 row.kind      = kind;
-ensure( fwrite( &row, 1, sizeof(row), output->fhnd ) == sizeof(row) );
+ensure( file_write_struct( output->hnd, &row ) );
 
-if( fseek( output->fhnd, output->caret, SEEK_SET ) )
+if( !file_seek( output->hnd, output->caret ) )
     {
-    return( false );
+    return( FALSE );
     }
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_BeginWritingAsset() */
 
@@ -299,35 +299,33 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_CreateForWrite( const char *filename, const AssetFileAssetId *ids, const uint32_t ids_count, AssetFileWriter *output )
+b8 AssetFile_CreateForWrite( const char *filename, const AssetFileAssetId *ids, const u32 ids_count, AssetFileWriter *output )
 {
 *output = {};
-
-errno_t err = fopen_s( &output->fhnd, filename, "w+b" );
-if( err )
+if( !file_open( filename, "w+b", &output->hnd ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 AssetFileHeader header = {};
 header.magic     = ASSET_FILE_MAGIC;
 header.table_cnt = ids_count;
 
-ensure( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
+ensure( file_write_struct( output->hnd, &header ) );
 
 AssetFileTableRow row;
-for( uint32_t i = 0; i < ids_count; i++ )
+for( u32 i = 0; i < ids_count; i++ )
     {
     row = {};
     row.id = ids[ i ];
 
-    ensure( fwrite( &row, 1, sizeof(row), output->fhnd ) == sizeof(row) );
+    ensure( file_write_struct( output->hnd, &row ) );
     }
 
 output->table_cnt = header.table_cnt;
-output->caret     = (uint32_t)ftell( output->fhnd );
+output->caret     = (u32)file_get_pos( output->hnd );
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_CreateForWrite() */
 
@@ -341,13 +339,13 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_DescribeFont( const uint8_t oversample_x, const uint8_t oversample_y, const uint16_t texture_width, const uint16_t texture_height, const uint32_t texture_sz, const uint8_t *pixels, const uint16_t glyph_cnt, const uint8_t *glyph_codes, AssetFileWriter *output )
+b8 AssetFile_DescribeFont( const u8 oversample_x, const u8 oversample_y, const u16 texture_width, const u16 texture_height, const u32 texture_sz, const u8 *pixels, const u16 glyph_cnt, const u8 *glyph_codes, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_FONT
 || !output->asset_start
-|| fseek( output->fhnd, output->asset_start, SEEK_SET ) )
+|| !file_seek( output->hnd, output->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 FontHeader header = {};
@@ -360,12 +358,12 @@ header.texture_sz        = texture_sz;
 header.texture_starts_at = output->caret + sizeof( FontHeader );
 header.glyphs_starts_at  = header.texture_starts_at + texture_sz;
 
-ensure( fwrite( &header, 1, sizeof( header ), output->fhnd ) == sizeof( header ) );
-ensure( fwrite( pixels, 1, texture_sz, output->fhnd ) == texture_sz );
+ensure( file_write_struct( output->hnd, &header ) );
+ensure( file_write( output->hnd, texture_sz, pixels ) );
 
-output->caret = (uint32_t)ftell( output->fhnd );
+output->caret = (u32)file_get_pos( output->hnd );
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_DescribeFont() */
 
@@ -380,13 +378,13 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_DescribeModel( const uint32_t node_count, const uint32_t mesh_count, const uint32_t material_count, AssetFileWriter *output )
+b8 AssetFile_DescribeModel( const u32 node_count, const u32 mesh_count, const u32 material_count, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start
- || fseek( output->fhnd, output->asset_start, SEEK_SET ) )
+ || !file_seek( output->hnd, output->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelHeader header = {};
@@ -394,18 +392,18 @@ header.node_count   = node_count;
 header.mesh_count   = mesh_count;
 header.material_cnt = material_count;
 
-ensure( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
+ensure( file_write_struct( output->hnd, &header ) );
 
-uint32_t row_count = node_count + mesh_count + material_count;
+u32 row_count = node_count + mesh_count + material_count;
 ModelTableRow row = {};
-for( uint32_t i = 0; i < row_count; i++ )
+for( u32 i = 0; i < row_count; i++ )
     {
-    ensure( fwrite( &row, 1, sizeof(row), output->fhnd ) == sizeof(row) );
+    ensure( file_write_struct( output->hnd, &row ) );
     }
 
-output->caret = (uint32_t)ftell( output->fhnd );
+output->caret = (u32)file_get_pos( output->hnd );
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_DescribeModel() */
 
@@ -419,22 +417,21 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_DescribeModelMaterial( const AssetFileModelMaterialBits maps, AssetFileWriter *output )
+b8 AssetFile_DescribeModelMaterial( const AssetFileModelMaterialBits maps, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelMaterialHeader header = {};
 header.map_bits = maps;
 
-assert( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
+ensure( file_write_struct( output->hnd, &header ) );
+output->caret = (u32)file_get_pos( output->hnd );
 
-output->caret = (uint32_t)ftell( output->fhnd );
-
-return( true );
+return( TRUE );
 
 } /* AssetFile_DescribeModelMaterial() */
 
@@ -448,12 +445,12 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_DescribeModelMesh( const uint32_t material_element_index, const uint32_t vertex_cnt, const uint32_t index_cnt, AssetFileWriter *output )
+b8 AssetFile_DescribeModelMesh( const u32 material_element_index, const u32 vertex_cnt, const u32 index_cnt, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelMeshHeader header = {};
@@ -461,11 +458,11 @@ header.vertex_cnt = vertex_cnt;
 header.index_cnt  = index_cnt;
 header.material   = material_element_index;
 
-ensure( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
+ensure( file_write_struct( output->hnd, &header ) );
 
-output->caret = (uint32_t)ftell( output->fhnd );
+output->caret = (u32)file_get_pos( output->hnd );
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_DescribeModelMesh() */
 
@@ -479,14 +476,14 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_DescribeModelNode( const uint32_t node_count, const float *mat4x4, const uint32_t mesh_count, AssetFileWriter *output )
+b8 AssetFile_DescribeModelNode( const u32 node_count, const f32 *mat4x4, const u32 mesh_count, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start
  || node_count > ASSET_FILE_MODEL_NODE_CHILD_NODE_MAX_COUNT 
  || mesh_count > ASSET_FILE_MODEL_NODE_CHILD_MESH_MAX_COUNT )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelNodeHeader header = {};
@@ -494,11 +491,11 @@ header.node_count = node_count;
 header.mesh_count = mesh_count;
 memcpy( header.transform, mat4x4, _countof( header.transform ) * sizeof( *header.transform ) );
 
-ensure( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
+ensure( file_write_struct( output->hnd, &header ) );
 
-output->caret = (uint32_t)ftell( output->fhnd );
+output->caret = (u32)file_get_pos( output->hnd );
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_DescribeModelNode() */
 
@@ -512,22 +509,22 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_DescribeShader( const uint32_t byte_size, AssetFileWriter *output )
+b8 AssetFile_DescribeShader( const u32 byte_size, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_SHADER
  || !output->asset_start
- || fseek( output->fhnd, output->asset_start, SEEK_SET ) )
+ || !file_seek( output->hnd, output->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ShaderHeader header = {};
 header.byte_size = byte_size;
 
-ensure( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
-output->caret = (uint32_t)ftell( output->fhnd );
+ensure( file_write_struct( output->hnd, &header ) );
+output->caret = (u32)file_get_pos( output->hnd );
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_DescribeShader() */
 
@@ -541,22 +538,22 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_DescribeTexture( const uint32_t byte_size, AssetFileWriter *output )
+b8 AssetFile_DescribeTexture( const u32 byte_size, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE
  || !output->asset_start
- || fseek( output->fhnd, output->asset_start, SEEK_SET ) )
+ || !file_seek( output->hnd, output->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 TextureHeader header = {};
 header.byte_size  = byte_size;
 
-ensure( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
-output->caret = (uint32_t)ftell( output->fhnd );
+ensure( file_write_struct( output->hnd, &header ) );
+output->caret = (u32)file_get_pos( output->hnd );
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_DescribeTexture() */
 
@@ -570,13 +567,13 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_DescribeTexture2( const uint32_t channel_cnt, const uint32_t width, const uint32_t height, const uint32_t byte_size, AssetFileWriter *output )
+b8 AssetFile_DescribeTexture2( const u32 channel_cnt, const u32 width, const u32 height, const u32 byte_size, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE
  || !output->asset_start
- || fseek( output->fhnd, output->asset_start, SEEK_SET ) )
+ || !file_seek( output->hnd, output->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 TextureHeader header = {};
@@ -585,10 +582,10 @@ header.width       = width;
 header.height      = height;
 header.channel_cnt = channel_cnt;
 
-ensure( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
-output->caret = (uint32_t)ftell( output->fhnd );
+ensure( file_write_struct( output->hnd, &header ) );
+output->caret = (u32)file_get_pos( output->hnd );
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_DescribeTexture2() */
 
@@ -603,22 +600,22 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_DescribeTextureExtents( const uint16_t element_cnt, AssetFileWriter *output )
+b8 AssetFile_DescribeTextureExtents( const u16 element_cnt, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE_EXTENTS
  || !output->asset_start
- || fseek( output->fhnd, output->asset_start, SEEK_SET ) )
+ || !file_seek( output->hnd, output->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 TextureExtentHeader header = {};
 header.texture_cnt = element_cnt;
 
-ensure( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
-output->caret = (uint32_t)ftell( output->fhnd );
+ensure( file_write_struct( output->hnd, &header ) );
+output->caret = (u32)file_get_pos( output->hnd );
 
-return( true );
+return( TRUE );
 
 }   /* AssetFile_DescribeTextureExtents() */
 
@@ -632,18 +629,18 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_EndReadingAsset( AssetFileReader *input )
+b8 AssetFile_EndReadingAsset( AssetFileReader *input )
 {
 if( input->kind == ASSET_FILE_ASSET_KIND_INVALID
  || !input->asset_start )
     {
-    return( false );
+    return( FALSE );
     }
 
 input->asset_start = 0;
 input->kind = ASSET_FILE_ASSET_KIND_INVALID;
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_EndReadingAsset() */
 
@@ -657,12 +654,12 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_EndWritingAsset( AssetFileWriter *output )
+b8 AssetFile_EndWritingAsset( AssetFileWriter *output )
 {
 output->asset_start = 0;
 output->kind = ASSET_FILE_ASSET_KIND_INVALID;
 
-return( true );
+return( TRUE );
 
 }   /* AssetFile_EndWritingAsset() */
 
@@ -676,34 +673,34 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_EndWritingModel( const uint32_t root_node_element, AssetFileWriter *output )
+b8 AssetFile_EndWritingModel( const u32 root_node_element, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start )
     {
-    return( false );
+    return( FALSE );
     }
 
-if( fseek( output->fhnd, output->asset_start, SEEK_SET ) )
+if( !file_seek( output->hnd, output->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelHeader header = {};
-ensure( fread( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
+ensure( file_read_struct( output->hnd, &header ) );
 
 header.root_node_element  = root_node_element;
 header.total_index_count  = output->model_indices_written;
 header.total_vertex_count = output->model_vertices_written;
-if( fseek( output->fhnd, output->asset_start, SEEK_SET ) )
+if( !file_seek( output->hnd, output->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
     
-ensure( fwrite( &header, 1, sizeof(header), output->fhnd ) == sizeof(header) );
-if( fseek( output->fhnd, output->caret, SEEK_SET ) )
+ensure( file_write_struct( output->hnd, &header ) );
+if( !file_seek( output->hnd, output->caret ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 output->asset_start = 0;
@@ -711,7 +708,7 @@ output->kind = ASSET_FILE_ASSET_KIND_INVALID;
 output->model_indices_written = 0;
 output->model_vertices_written = 0;
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_EndWritingModel() */
 
@@ -725,18 +722,18 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_EndWritingTextureExtents( AssetFileWriter *output )
+b8 AssetFile_EndWritingTextureExtents( AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE_EXTENTS
  || !output->asset_start )
     {
-    return( false );
+    return( FALSE );
     }
 
 output->asset_start = 0;
 output->kind = ASSET_FILE_ASSET_KIND_INVALID;
 
-return( true );
+return( TRUE );
 
 }   /* AssetFile_EndWritingTextureExtents() */
 
@@ -750,9 +747,9 @@ return( true );
 *
 *******************************************************************/
 
-size_t AssetFile_GetWriteSize( const AssetFileWriter *output )
+u64 AssetFile_GetWriteSize( const AssetFileWriter *output )
 {
-return( (size_t)output->caret );
+return( output->caret );
 
 } /* AssetFile_GetWriteSize() */
 
@@ -766,33 +763,32 @@ return( (size_t)output->caret );
 *
 *******************************************************************/
 
-bool AssetFile_OpenForRead( const char *filename, AssetFileReader *input )
+b8 AssetFile_OpenForRead( const char *filename, AssetFileReader *input )
 {
 *input = {};
-errno_t err = fopen_s( &input->fhnd, filename, "rb" );
-if( err )
+if( !file_open( filename, "rb", &input->hnd ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 AssetFileHeader file_header = {};
-if( fread( &file_header, 1, sizeof(file_header), input->fhnd ) != sizeof(file_header) )
+if( !file_read_struct( input->hnd, &file_header ) )
     {
-    ensure( fclose( input->fhnd ) == 0 );
-    input->fhnd = 0;
-    return( false );
+    ensure( file_close( input->hnd ) );
+    input->hnd = 0;
+    return( FALSE );
     }
 
 if( file_header.magic != ASSET_FILE_MAGIC )
     {
-    ensure( fclose( input->fhnd ) == 0 );
-    input->fhnd = 0;
-    return( false );
+    ensure( file_close( input->hnd ) );
+    input->hnd = 0;
+    return( FALSE );
     }
 
 input->table_cnt = file_header.table_cnt;
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_OpenForRead() */
 
@@ -806,48 +802,48 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadFontGlyphs( const uint16_t glyph_capacity, AssetFileFontGlyph *glyphs, AssetFileReader *input )
+b8 AssetFile_ReadFontGlyphs( const u16 glyph_capacity, AssetFileFontGlyph *glyphs, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_FONT
  || !input->asset_start
  || glyphs == NULL )
     {
-    return( false );
+    return( FALSE );
     }
 
-if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+if( !file_seek( input->hnd, input->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 FontHeader header = {};
-if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+if( !file_read_struct( input->hnd, &header ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 if( glyph_capacity < header.glyph_cnt )
     {
-    return( false );
+    return( FALSE );
     }
     
-if( fseek( input->fhnd, header.glyphs_starts_at, SEEK_SET ) )
+if( !file_seek( input->hnd, header.glyphs_starts_at ) )
     {
-    return( false );
+    return( FALSE );
     }
 
-float width_scale  = 1.0f / (float)header.oversample_x;
-float height_scale = 1.0f / (float)header.oversample_y;
+f32 width_scale  = 1.0f / (f32)header.oversample_x;
+f32 height_scale = 1.0f / (f32)header.oversample_y;
 
-for( uint32_t i = 0; i < header.glyph_cnt; i++ )
+for( u32 i = 0; i < header.glyph_cnt; i++ )
     {
     FontGlyphHeader glyph = {};
-    if( fread_s( &glyph, sizeof(glyph), 1, sizeof(glyph), input->fhnd ) != sizeof(glyph) )
+    if( !file_read_struct( input->hnd, &glyph ) )
         {
-        return( false );
+        return( FALSE );
         }
 
-    AssetFileFontGlyph *out = &glyphs[ i ];
+    AssetFileFontGlyph *out = glyphs + i;
     
     out->glyph          = glyph.glyph;
     out->width          = width_scale  * ( glyph.u1 - glyph.u0 );
@@ -856,14 +852,14 @@ for( uint32_t i = 0; i < header.glyph_cnt; i++ )
     out->top_left_y     = glyph.pen_offset_y;
     out->bottom_right_x = out->top_left_x + out->width;
     out->bottom_right_y = out->top_left_y + out->height;
-    out->u0             = (float)glyph.u0 / header.texture_width;
-    out->v0             = (float)glyph.v0 / header.texture_height;
-    out->u1             = (float)glyph.u1 / header.texture_width;
-    out->v1             = (float)glyph.v1 / header.texture_height;
+    out->u0             = (f32)glyph.u0 / header.texture_width;
+    out->v0             = (f32)glyph.v0 / header.texture_height;
+    out->u1             = (f32)glyph.u1 / header.texture_width;
+    out->v1             = (f32)glyph.v1 / header.texture_height;
     out->h_advance      = glyph.h_advance;
     }
 
-return( true );
+return( TRUE );
 
 }   /* AssetFile_ReadFontGlyphs() */
 
@@ -877,7 +873,7 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadFontTexture( const uint32_t buffer_sz, uint8_t *pixels, uint16_t *width, uint16_t *height, AssetFileReader *input )
+b8 AssetFile_ReadFontTexture( const u32 buffer_sz, u8 *pixels, u16 *width, u16 *height, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_FONT
  || !input->asset_start
@@ -885,34 +881,34 @@ if( input->kind != ASSET_FILE_ASSET_KIND_FONT
  || width == NULL
  || height == NULL )
     {
-    return( false );
+    return( FALSE );
     }
 
-if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+if( !file_seek( input->hnd, input->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 FontHeader header = {};
-if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+if( !file_read_struct( input->hnd, &header ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 *width  = header.texture_width;
 *height = header.texture_height;
 
-if( fseek( input->fhnd, header.texture_starts_at, SEEK_SET ) )
+if( !file_seek( input->hnd, header.texture_starts_at ) )
     {
-    return( false );
+    return( FALSE );
     }
     
-if( fread_s( pixels, header.texture_sz, 1, header.texture_sz, input->fhnd ) != header.texture_sz )
+if( !file_read( input->hnd, header.texture_sz, pixels ) )
     {
-    return( false );
+    return( FALSE );
     }
 
-return( true );
+return( TRUE );
 
 }   /* AssetFile_ReadFontTexture() */
 
@@ -926,31 +922,31 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadFontStorageRequirements( uint16_t *glyph_cnt, uint32_t *texture_sz, AssetFileReader *input )
+b8 AssetFile_ReadFontStorageRequirements( u16 *glyph_cnt, u32 *texture_sz, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_FONT
  || !input->asset_start
  || glyph_cnt == NULL
  || texture_sz == NULL )
     {
-    return( false );
+    return( FALSE );
     }
 
-if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+if( !file_seek( input->hnd, input->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 FontHeader header = {};
-if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+if( !file_read_struct( input->hnd, &header ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 *glyph_cnt  = header.glyph_cnt;
 *texture_sz = header.texture_sz;
 
-return( true );
+return( TRUE );
 
 }   /* AssetFile_ReadFontStorageRequirements() */
 
@@ -964,51 +960,51 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadModelMaterials( const uint32_t material_capacity, uint32_t *material_count, AssetFileModelMaterial *materials, AssetFileReader *input )
+b8 AssetFile_ReadModelMaterials( const u32 material_capacity, u32 *material_count, AssetFileModelMaterial *materials, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !input->asset_start
  || materials == NULL
  || material_count == NULL )
     {
-    return( false );
+    return( FALSE );
     }
 
 *material_count = 0;
 
-if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+if( !file_seek( input->hnd, input->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelHeader header = {};
-if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+if( !file_read_struct( input->hnd, &header ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 if( header.material_cnt > material_capacity )
     {
-    return( false );
+    return( FALSE );
     }
 
-for( uint32_t i = 0; i < header.material_cnt; i++ )
+for( u32 i = 0; i < header.material_cnt; i++ )
     {
     materials[ i ] = {};
 
-    if( !JumpToModelMaterial( input->asset_start, i, input->fhnd ) )
+    if( !JumpToModelMaterial( input->asset_start, i, input->hnd ) )
         {
-        return( false );
+        return( FALSE );
         }
 
     ModelMaterialHeader material = {};
-    if( fread_s( &material, sizeof( material ), 1, sizeof( material ), input->fhnd ) != sizeof( material ) )
+    if( !file_read_struct( input->hnd, &material ) )
         {
-        return( false );
+        return( FALSE );
         }
 
     materials[ i ].bits = material.map_bits;
-    for( uint32_t j = 0; j < ASSET_FILE_MODEL_TEXTURE_COUNT; j++ )
+    for( u32 j = 0; j < ASSET_FILE_MODEL_TEXTURE_COUNT; j++ )
         {
         if( !( material.map_bits & ( 1 << j ) ) )
             {
@@ -1016,9 +1012,9 @@ for( uint32_t i = 0; i < header.material_cnt; i++ )
             }
 
         AssetFileAssetId element;
-        if( fread_s( &element, sizeof(element), 1, sizeof(element), input->fhnd ) != sizeof(element) )
+        if( !file_read_struct( input->hnd, &element ) )
             {
-            return( false );
+            return( FALSE );
             }
 
         materials[ i ].textures[ j ] = element;
@@ -1027,7 +1023,7 @@ for( uint32_t i = 0; i < header.material_cnt; i++ )
     }
 
 *material_count = header.material_cnt;
-return( true );
+return( TRUE );
 
 } /* AssetFile_ReadModelMaterials() */
 
@@ -1041,49 +1037,49 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadModelMeshIndices( const uint32_t mesh_index, const uint32_t index_capacity, uint32_t *index_count, AssetFileModelIndex *indices, AssetFileReader *input )
+b8 AssetFile_ReadModelMeshIndices( const u32 mesh_index, const u32 index_capacity, u32 *index_count, AssetFileModelIndex *indices, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !input->asset_start
  || indices == NULL
  || index_count == NULL )
     {
-    return( false );
+    return( FALSE );
     }
 
 *index_count = 0;
 
-if( !JumpToModelMesh( input->asset_start, mesh_index, input->fhnd ) )
+if( !JumpToModelMesh( input->asset_start, mesh_index, input->hnd ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelMeshHeader mesh = {};
-if( fread_s( &mesh, sizeof(mesh), 1, sizeof(mesh), input->fhnd ) != sizeof(mesh) )
+if( !file_read_struct( input->hnd, &mesh ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 if( index_capacity < mesh.index_cnt )
     {
-    return( false );
+    return( FALSE );
     }
     
 /* Geometry order is... 
  a) VERTICES
  b) INDICES <-- Look here */
-if( fseek( input->fhnd, sizeof(AssetFileModelVertex) * mesh.vertex_cnt, SEEK_CUR ) )
+if( !file_seek_rel( input->hnd, sizeof(AssetFileModelVertex) * mesh.vertex_cnt ) )
     {
-    return( false );
+    return( FALSE );
     }
 
-if( fread_s( indices, index_capacity * sizeof(AssetFileModelIndex), sizeof(AssetFileModelIndex), mesh.index_cnt, input->fhnd ) != mesh.index_cnt )
+if( !file_read_array( input->hnd, mesh.index_cnt, indices ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 *index_count = mesh.index_cnt;
-return( true );
+return( TRUE );
 
 } /* AssetFile_ReadModelMeshIndices() */
 
@@ -1097,32 +1093,32 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadModelMeshVertices( const uint32_t mesh_index, const uint32_t vertex_capacity, AssetFileModelIndex *material_index, uint32_t *vertex_count, AssetFileModelVertex *vertices, AssetFileReader *input )
+b8 AssetFile_ReadModelMeshVertices( const u32 mesh_index, const u32 vertex_capacity, AssetFileModelIndex *material_index, u32 *vertex_count, AssetFileModelVertex *vertices, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !input->asset_start
  || vertices == NULL
  || vertex_count == NULL )
     {
-    return( false );
+    return( FALSE );
     }
 
 *vertex_count = 0;
 
-if( !JumpToModelMesh( input->asset_start, mesh_index, input->fhnd ) )
+if( !JumpToModelMesh( input->asset_start, mesh_index, input->hnd ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelMeshHeader mesh = {};
-if( fread_s( &mesh, sizeof(mesh), 1, sizeof(mesh), input->fhnd ) != sizeof(mesh) )
+if( !file_read_struct( input->hnd, &mesh ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 if( vertex_capacity < mesh.vertex_cnt )
     {
-    return( false );
+    return( FALSE );
     }
 
 if( material_index )
@@ -1133,13 +1129,13 @@ if( material_index )
 /* Geometry order is... 
  a) VERTICES <-- Look here
  b) INDICES */
-if( fread_s( vertices, vertex_capacity * sizeof(AssetFileModelVertex), sizeof(AssetFileModelVertex), mesh.vertex_cnt, input->fhnd ) != mesh.vertex_cnt )
+if( !file_read_array( input->hnd, mesh.vertex_cnt, vertices ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 *vertex_count = mesh.vertex_cnt;
-return( true );
+return( TRUE );
 
 } /* AssetFile_ReadModelMeshVertices() */
 
@@ -1153,46 +1149,46 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadModelNodes( const uint32_t node_capacity, uint32_t *node_count, AssetFileModelNode *nodes, AssetFileReader *input )
+b8 AssetFile_ReadModelNodes( const u32 node_capacity, u32 *node_count, AssetFileModelNode *nodes, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !input->asset_start
  || nodes == NULL )
     {
-    return( false );
+    return( FALSE );
     }
 
 *node_count = 0;
 
-if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+if( !file_seek( input->hnd, input->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelHeader header = {};
-if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+if( !file_read_struct( input->hnd, &header ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 if( header.node_count > node_capacity )
     {
-    return( false );
+    return( FALSE );
     }
 
-for( uint32_t i = 0; i < header.node_count; i++ )
+for( u32 i = 0; i < header.node_count; i++ )
     {
     nodes[ i ] = {};
 
-    if( !JumpToModelNode( input->asset_start, i, input->fhnd ) )
+    if( !JumpToModelNode( input->asset_start, i, input->hnd ) )
         {
-        return( false );
+        return( FALSE );
         }
 
     ModelNodeHeader node = {};
-    if( fread_s( &node, sizeof( node ), 1, sizeof( node ), input->fhnd ) != sizeof( node ) )
+    if( !file_read_struct( input->hnd, &node ) )
         {
-        return( false );
+        return( FALSE );
         }
 
     AssetFileModelIndex element;
@@ -1201,22 +1197,22 @@ for( uint32_t i = 0; i < header.node_count; i++ )
     memcpy( nodes[ i ].transform, node.transform, _countof( nodes->transform ) * sizeof( *nodes->transform ) );
 
     /* nodes */
-    for( uint32_t j = 0; j < node.node_count; j++ )
+    for( u32 j = 0; j < node.node_count; j++ )
         {
-        if( fread_s( &element, sizeof(element), 1, sizeof(element), input->fhnd ) != sizeof(element) )
+        if( !file_read_struct( input->hnd, &element ) )
             {
-            return( false );
+            return( FALSE );
             }
 
         nodes[ i ].child_nodes[ nodes[ i ].child_node_count++ ] = element - ( header.material_cnt + header.mesh_count );
         }
 
     /* meshes */
-    for( uint32_t j = 0; j < node.mesh_count; j++ )
+    for( u32 j = 0; j < node.mesh_count; j++ )
         {
-        if( fread_s( &element, sizeof(element), 1, sizeof(element), input->fhnd ) != sizeof(element) )
+        if( !file_read_struct( input->hnd, &element ) )
             {
-            return( false );
+            return( FALSE );
             }
 
         nodes[ i ].child_meshes[ nodes[ i ].child_mesh_count++ ] = element - header.material_cnt;
@@ -1225,7 +1221,7 @@ for( uint32_t i = 0; i < header.node_count; i++ )
 
 *node_count = header.node_count;
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_ReadModelNodes() */
 
@@ -1239,23 +1235,23 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadModelStorageRequirements( uint32_t *vertex_count, uint32_t *index_count, uint32_t *mesh_count, uint32_t *node_count, uint32_t *material_count, AssetFileReader *input )
+b8 AssetFile_ReadModelStorageRequirements( u32 *vertex_count, u32 *index_count, u32 *mesh_count, u32 *node_count, u32 *material_count, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !input->asset_start )
     {
-    return( false );
+    return( FALSE );
     }
 
-if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+if( !file_seek( input->hnd, input->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelHeader header = {};
-if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+if( !file_read_struct( input->hnd, &header ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 if( vertex_count )
@@ -1283,7 +1279,7 @@ if( material_count )
     *material_count = header.material_cnt;
     }
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_ReadModelStorageRequirements() */
 
@@ -1298,30 +1294,30 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadShaderBinary( const uint32_t buffer_sz, uint32_t *read_sz, uint8_t *buffer, AssetFileReader *input )
+b8 AssetFile_ReadShaderBinary( const u32 buffer_sz, u32 *read_sz, u8 *buffer, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_SHADER
  || !input->asset_start
  || buffer == NULL )
     {
-    return( false );
+    return( FALSE );
     }
 
-if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+if( !file_seek( input->hnd, input->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ShaderHeader header = {};
-if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header)
+if( !file_read_struct( input->hnd, &header )
  || buffer_sz < header.byte_size )
     {
-    return( false );
+    return( FALSE );
     }
     
-if( fread_s( buffer, buffer_sz, 1, header.byte_size, input->fhnd ) != header.byte_size )
+if( !file_read_buffer( input->hnd, buffer_sz, header.byte_size, buffer ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 if( read_sz != NULL )
@@ -1329,7 +1325,7 @@ if( read_sz != NULL )
     *read_sz = header.byte_size;
     }
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_ReadShaderBinary() */
 
@@ -1343,28 +1339,28 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadShaderStorageRequirements( uint32_t *byte_count, AssetFileReader *input )
+b8 AssetFile_ReadShaderStorageRequirements( u32 *byte_count, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_SHADER
  || !input->asset_start
  || byte_count == NULL )
     {
-    return( false );
+    return( FALSE );
     }
 
-if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+if( !file_seek( input->hnd, input->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ShaderHeader header = {};
-if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+if( !file_read_struct( input->hnd, &header ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 *byte_count = header.byte_size;
-return( true );
+return( TRUE );
 
 } /* AssetFile_ReadShaderStorageRequirements() */
 
@@ -1379,20 +1375,19 @@ return( true );
 *       
 *******************************************************************/
 
-bool AssetFile_ReadSoundPairs(  uint16_t num_pairs, AssetFileSoundPair *sound_pairs, AssetFileReader *input )
+b8 AssetFile_ReadSoundPairs( u16 num_pairs, AssetFileSoundPair *sound_pairs, AssetFileReader *input )
 {
-uint16_t num_elements;
+u16 num_elements;
 if( !AssetFile_ReadSoundPairsStorageRequirements( &num_elements, input )
  || num_pairs < num_elements
  || sound_pairs == NULL )
     {
-    return(false);
+    return( FALSE );
     }
 
-uint32_t read_size = sizeof(*sound_pairs) * num_elements;
-ensure ( fread_s( sound_pairs, read_size, 1, read_size,input->fhnd ) == read_size );
+ensure( file_read_array( input->hnd, num_elements, sound_pairs ) );
 
-return true;
+return( TRUE );
    
 } /* AssetFile_ReadSoundPairs() */
 
@@ -1406,27 +1401,27 @@ return true;
 *
 *******************************************************************/
 
-bool AssetFile_ReadSoundPairsStorageRequirements( uint16_t *num_elements, AssetFileReader *input )
+b8 AssetFile_ReadSoundPairsStorageRequirements( u16 *num_elements, AssetFileReader *input )
 {
 if( ( input->kind != ASSET_FILE_ASSET_KIND_SOUND_SAMPLE
    && input->kind != ASSET_FILE_ASSET_KIND_SOUND_MUSIC_CLIP )
  || !input->asset_start
- || num_elements == NULL)
+ || num_elements == NULL )
     {
-    return(false);
+    return( FALSE );
     }
 
-if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+if( !file_seek( input->hnd, input->asset_start ) )
     {
-    return(false);
+    return( FALSE );
     }
 
-if( fread_s( num_elements, sizeof( *num_elements ), 1, sizeof( *num_elements ), input->fhnd ) != sizeof( *num_elements ) )
+if( !file_read_struct( input->hnd, num_elements ) )
     {
-    return(false);
+    return( FALSE );
     }
 
-return(true);
+return( TRUE );
 
 } /* AssetFile_ReadSoundPairsStorageRequirements() */
 
@@ -1441,30 +1436,30 @@ return(true);
 *
 *******************************************************************/
 
-bool AssetFile_ReadTextureBinary( const uint32_t buffer_sz, uint32_t *read_sz, uint8_t *buffer, AssetFileReader *input )
+b8 AssetFile_ReadTextureBinary( const u32 buffer_sz, u32 *read_sz, byte *buffer, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_TEXTURE
  || !input->asset_start
  || buffer == NULL )
     {
-    return( false );
+    return( FALSE );
     }
 
-if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+if( !file_seek( input->hnd, input->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 TextureHeader header = {};
-if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header)
+if( !file_read_struct( input->hnd, &header )
  || buffer_sz < header.byte_size )
     {
-    return( false );
+    return( FALSE );
     }
     
-if( fread_s( buffer, buffer_sz, 1, header.byte_size, input->fhnd ) != header.byte_size )
+if( !file_read( input->hnd, header.byte_size, buffer ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 if( read_sz != NULL )
@@ -1472,7 +1467,7 @@ if( read_sz != NULL )
     *read_sz = header.byte_size;
     }
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_ReadTextureBinary() */
 
@@ -1486,7 +1481,7 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadTextureStorageRequirements( uint32_t *channel_cnt, uint32_t *width, uint32_t *height, uint32_t *byte_count, AssetFileReader *input )
+b8 AssetFile_ReadTextureStorageRequirements( u32 *channel_cnt, u32 *width, u32 *height, u32 *byte_count, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_TEXTURE
  || !input->asset_start
@@ -1495,25 +1490,25 @@ if( input->kind != ASSET_FILE_ASSET_KIND_TEXTURE
  || height == NULL
  || byte_count == NULL )
     {
-    return( false );
+    return( FALSE );
     }
 
-if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+if( !file_seek( input->hnd, input->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 TextureHeader header = {};
-if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+if( !file_read_struct( input->hnd, &header ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 *channel_cnt = header.channel_cnt;
 *width = header.width;
 *height = header.height;
 *byte_count = header.byte_size;
-return( true );
+return( TRUE );
 
 } /* AssetFile_ReadTextureStorageRequirements() */
 
@@ -1527,28 +1522,28 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadTextureExtents( const uint16_t output_cnt, AssetFileTextureExtent *out_elements, AssetFileReader *input )
+b8 AssetFile_ReadTextureExtents( const u16 output_cnt, AssetFileTextureExtent *out_elements, AssetFileReader *input )
 {
-uint16_t element_cnt;
+u16 element_cnt;
 if( !AssetFile_ReadTextureExtentsStorageRequirements( &element_cnt, input )
  || output_cnt < element_cnt )
     {
-    return( false );
+    return( FALSE );
     }
 
-for( uint16_t i = 0; i < element_cnt; i++ )
+for( u16 i = 0; i < element_cnt; i++ )
     {
     AssetFileTextureExtent *element = &out_elements[ i ];
 
-    if( fread_s( &element->texture_id, sizeof( element->texture_id ), 1, sizeof( element->texture_id ), input->fhnd ) != sizeof( element->texture_id )
-     || fread_s( &element->width,      sizeof( element->width ),      1, sizeof( element->width ),      input->fhnd ) != sizeof( element->width )
-     || fread_s( &element->height,     sizeof( element->height ),     1, sizeof( element->height ),     input->fhnd ) != sizeof( element->height ) )
+    if( !file_read_struct( input->hnd, &element->texture_id )
+     || !file_read_struct( input->hnd, &element->width )
+     || !file_read_struct( input->hnd, &element->height ) )
         {
-        return( false );
+        return( FALSE );
         }
     }
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_ReadTextureExtents() */
 
@@ -1562,29 +1557,29 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_ReadTextureExtentsStorageRequirements( uint16_t *element_cnt, AssetFileReader *input )
+b8 AssetFile_ReadTextureExtentsStorageRequirements( u16 *element_cnt, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_TEXTURE_EXTENTS
  || !input->asset_start
  || element_cnt == NULL )
     {
-    return( false );
+    return( FALSE );
     }
 
-if( fseek( input->fhnd, input->asset_start, SEEK_SET ) )
+if( !file_seek( input->hnd, input->asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 TextureExtentHeader header = {};
-if( fread_s( &header, sizeof(header), 1, sizeof(header), input->fhnd ) != sizeof(header) )
+if( !file_read_struct( input->hnd, &header ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 *element_cnt = header.texture_cnt;
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_ReadTextureExtentsStorageRequirements() */
 
@@ -1598,12 +1593,12 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_WriteFontGlyph( const uint8_t glyph, const uint16_t u0, const uint16_t v0, const uint16_t u1, const uint16_t v1, const float pen_dx, const float pen_dy, const float pen_xadvance, AssetFileWriter *output )
+b8 AssetFile_WriteFontGlyph( const u8 glyph, const u16 u0, const u16 v0, const u16 u1, const u16 v1, const f32 pen_dx, const f32 pen_dy, const f32 pen_xadvance, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_FONT
  || !output->asset_start )
     {
-    return( false );
+    return( FALSE );
     }
 
 FontGlyphHeader header = {};
@@ -1616,10 +1611,10 @@ header.h_advance    = pen_xadvance;
 header.pen_offset_x = pen_dx;
 header.pen_offset_y = pen_dy;
 
-ensure( fwrite( &header, 1, sizeof( header ), output->fhnd ) == sizeof( header ) );
-output->caret = (uint32_t)ftell( output->fhnd );
+ensure( file_write_struct( output->hnd, &header ) );
+output->caret = (u32)file_get_pos( output->hnd );
 
-return( true );
+return( TRUE );
 
 }   /* AssetFile_WriteFontGlyph() */
 
@@ -1633,19 +1628,19 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_WriteModelMaterialTextureMaps( const AssetFileAssetId *asset_ids, const uint8_t count, AssetFileWriter *output )
+b8 AssetFile_WriteModelMaterialTextureMaps( const AssetFileAssetId *asset_ids, const u8 count, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start )
     {
-    return( false );
+    return( FALSE );
     }
 
-ensure( fwrite( asset_ids, sizeof(*asset_ids), count, output->fhnd) == count );
+ensure( file_write_array( output->hnd, count, asset_ids ) );
 
-output->caret = (uint32_t)ftell( output->fhnd );
+output->caret = (u32)file_get_pos( output->hnd );
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_WriteModelMaterialTextureMaps() */
 
@@ -1659,20 +1654,20 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_WriteModelMeshIndex( const AssetFileModelIndex index, AssetFileWriter *output )
+b8 AssetFile_WriteModelMeshIndex( const AssetFileModelIndex index, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start )
     {
-    return( false );
+    return( FALSE );
     }
 
-ensure( fwrite( &index, 1, sizeof(index), output->fhnd ) == sizeof(index) );
+ensure( file_write_struct( output->hnd, &index ) );
 
-output->caret = (uint32_t)ftell( output->fhnd );
+output->caret = (u32)file_get_pos( output->hnd );
 output->model_indices_written++;
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_WriteModelMeshIndex() */
 
@@ -1686,20 +1681,20 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_WriteModelMeshVertex( const AssetFileModelVertex *vertex, AssetFileWriter *output )
+b8 AssetFile_WriteModelMeshVertex( const AssetFileModelVertex *vertex, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start )
     {
-    return( false );
+    return( FALSE );
     }
 
-ensure( fwrite( vertex, 1, sizeof(*vertex), output->fhnd ) == sizeof(*vertex) );
+ensure( file_write_struct( output->hnd, vertex ) );
 
-output->caret = (uint32_t)ftell( output->fhnd );
+output->caret = (u32)file_get_pos( output->hnd );
 output->model_vertices_written++;
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_WriteModelMeshVertex() */
 
@@ -1713,19 +1708,19 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_WriteModelNodeChildElements( const AssetFileModelIndex *element_ids, const uint32_t count, AssetFileWriter *output )
+b8 AssetFile_WriteModelNodeChildElements( const AssetFileModelIndex *element_ids, const u32 count, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start )
     {
-    return( false );
+    return( FALSE );
     }
 
-ensure( fwrite( element_ids, sizeof(*element_ids), count, output->fhnd) == count );
+ensure( file_write_array( output->hnd, count, element_ids ) );
 
-output->caret = (uint32_t)ftell( output->fhnd );
+output->caret = (u32)file_get_pos( output->hnd );
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_WriteModelNodeChildElements() */
 
@@ -1740,22 +1735,22 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_WriteShader( const uint8_t *blob, const uint32_t blob_size, AssetFileWriter *output )
+b8 AssetFile_WriteShader( const byte *blob, const u32 blob_size, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_SHADER
  || !output->asset_start )
     {
-    return( false );
+    return( FALSE );
     }
 
-ensure( fwrite( blob, sizeof(*blob), blob_size, output->fhnd ) == blob_size );
+ensure( file_write( output->hnd, blob_size, blob ) );
 
-output->caret = (uint32_t)ftell( output->fhnd );
+output->caret = (u32)file_get_pos( output->hnd );
 
 output->asset_start = 0;
 output->kind = ASSET_FILE_ASSET_KIND_INVALID;
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_WriteShader() */
 
@@ -1770,25 +1765,25 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_WriteSoundPairs( const AssetFileSoundPair *sound_pair, const uint16_t num_pairs, AssetFileWriter *output )
+b8 AssetFile_WriteSoundPairs( const AssetFileSoundPair *sound_pair, const u16 num_pairs, AssetFileWriter *output )
 {
 if( !output->asset_start
  || ( output->kind != ASSET_FILE_ASSET_KIND_SOUND_SAMPLE
    && output->kind != ASSET_FILE_ASSET_KIND_SOUND_MUSIC_CLIP ) )
     {
-    return( false );
+    return( FALSE );
     }
 
-uint32_t size_write = sizeof( *sound_pair ) * num_pairs;
-ensure( fwrite( &num_pairs, 1, sizeof( num_pairs ), output->fhnd) == sizeof( num_pairs ) ); 
-ensure( fwrite( sound_pair, 1, size_write, output->fhnd ) == size_write );
+u32 size_write = sizeof( *sound_pair ) * num_pairs;
+ensure( file_write_struct( output->hnd, &num_pairs ) );
+ensure( file_write_array( output->hnd, num_pairs, sound_pair ) );
 
-output->caret = (uint32_t)ftell( output->fhnd );
+output->caret = (u32)file_get_pos( output->hnd );
 
 output->asset_start = 0;
 output->kind = ASSET_FILE_ASSET_KIND_INVALID;
 
-return(true);
+return( TRUE );
 
 } /* AssetFile_WriteSoundPairs() */
 
@@ -1803,22 +1798,22 @@ return(true);
 *
 *******************************************************************/
 
-bool AssetFile_WriteTexture( const uint8_t *image, const uint32_t image_size, AssetFileWriter *output )
+b8 AssetFile_WriteTexture( const byte *image, const u32 image_size, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE
  || !output->asset_start )
     {
-    return( false );
+    return( FALSE );
     }
 
-ensure( fwrite( image, sizeof(*image), image_size, output->fhnd) == image_size );
+ensure( file_write( output->hnd, image_size, image ) );
 
-output->caret = (uint32_t)ftell( output->fhnd );
+output->caret = (u32)file_get_pos( output->hnd );
 
 output->asset_start = 0;
 output->kind = ASSET_FILE_ASSET_KIND_INVALID;
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_WriteTexture() */
 
@@ -1833,21 +1828,21 @@ return( true );
 *
 *******************************************************************/
 
-bool AssetFile_WriteTextureExtent( const AssetFileAssetId id, const uint16_t width, const uint16_t height, AssetFileWriter *output )
+b8 AssetFile_WriteTextureExtent( const AssetFileAssetId id, const u16 width, const u16 height, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE_EXTENTS
  || !output->asset_start )
     {
-    return( false );
+    return( FALSE );
     }
 
-ensure( fwrite( &id, 1, sizeof( id ), output->fhnd ) == sizeof( id ) );
-ensure( fwrite( &width, 1, sizeof( width ), output->fhnd ) == sizeof( width ) );
-ensure( fwrite( &height, 1, sizeof( height ), output->fhnd ) == sizeof( height ) );
+ensure( file_write_struct( output->hnd, &id ) );
+ensure( file_write_struct( output->hnd, &width ) );
+ensure( file_write_struct( output->hnd, &height ) );
 
-output->caret = (uint32_t)ftell( output->fhnd );
+output->caret = (u32)file_get_pos( output->hnd );
 
-return( true );
+return( TRUE );
 
 } /* AssetFile_WriteTextureExtent() */
 
@@ -1863,12 +1858,12 @@ return( true );
 *
 *******************************************************************/
 
-static bool JumpToAssetInTable( const AssetFileAssetId id, const uint32_t table_count, FILE *file )
+static b8 JumpToAssetInTable( const AssetFileAssetId id, const u32 table_count, fhnd file )
 {
 long table_start = (long)sizeof(AssetFileHeader);
 long row_stride  = (long)sizeof(AssetFileTableRow);
 
-bool found_it = false;    
+b8 found_it = FALSE;
 long remain = (long)table_count;
 long middle;
 long top = 0;
@@ -1877,23 +1872,23 @@ while( remain > 0 )
     {
     middle = top + remain / 2;
     
-    if( fseek( file, table_start + middle * row_stride, SEEK_SET ) )
+    if( !file_seek( file, table_start + middle * row_stride ) )
         {
-        return( false );
+        return( FALSE );
         }
 
     row = {};
-    if( fread( &row, 1, sizeof(row), file ) != sizeof(row) )
+    if( !file_read_struct( file, &row ) )
         {
-        return( false );
+        return( FALSE );
         }
 
     if( id == row.id )
         {
-        found_it = true;
-        if( fseek( file, -row_stride, SEEK_CUR ) )
+        found_it = TRUE;
+        if( !file_seek_rel( file, -row_stride ) )
             {
-            return( false );
+            return( FALSE );
             }
 
         break;
@@ -1922,17 +1917,17 @@ return( found_it );
 *
 *******************************************************************/
 
-static bool JumpToModelMaterial( const uint32_t asset_start, const uint32_t material_index, FILE *file )
+static b8 JumpToModelMaterial( const u32 asset_start, const u32 material_index, fhnd file )
 {
-if( fseek( file, asset_start, SEEK_SET ) )
+if( !file_seek( file, asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelHeader header = {};
-if( fread_s( &header, sizeof(header), 1, sizeof(header), file ) != sizeof(header) )
+if( !file_read_struct( file, &header ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 /* Element table order is...  
@@ -1940,28 +1935,28 @@ if( fread_s( &header, sizeof(header), 1, sizeof(header), file ) != sizeof(header
  b) MESHES
  c) NODES */
 
-uint32_t element_location = asset_start
-                          + (uint32_t)sizeof(ModelHeader)
-                          + material_index * (uint32_t)sizeof(ModelTableRow);
+u32 element_location = asset_start
+                     + (u32)sizeof(ModelHeader)
+                     + material_index * (u32)sizeof(ModelTableRow);
 
-if( fseek( file, element_location, SEEK_SET ) )
+if( !file_seek( file, element_location ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelTableRow element = {};
-if( fread_s( &element, sizeof(element), 1, sizeof(element), file ) != sizeof(element)
+if( !file_read_struct( file, &element )
  || element.kind != ASSET_FILE_MODEL_ELEMENT_KIND_MATERIAL )
     {
-    return( false );
+    return( FALSE );
     }
 
-if( fseek( file, element.starts_at, SEEK_SET ) )
+if( !file_seek( file, element.starts_at ) )
     {
-    return( false );
+    return( FALSE );
     }
 
-return( true );
+return( TRUE );
 
 } /* JumpToModelMaterials() */
 
@@ -1976,50 +1971,50 @@ return( true );
 *
 *******************************************************************/
 
-static bool JumpToModelMesh( const uint32_t asset_start, const uint32_t mesh_index, FILE *file )
+static b8 JumpToModelMesh( const u32 asset_start, const u32 mesh_index, fhnd file )
 {
-if( fseek( file, asset_start, SEEK_SET ) )
+if( !file_seek( file, asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelHeader header = {};
-if( fread_s( &header, sizeof(header), 1, sizeof(header), file ) != sizeof(header) )
+if( !file_read_struct( file, &header ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 if( mesh_index >= header.mesh_count )
     {
-    return( false );
+    return( FALSE );
     }
 
 /* Element table order is...  
  a) MATERIALS
  b) MESHES <-- Look here
  c) NODES */
-uint32_t element_location = asset_start
-                          + (uint32_t)sizeof(ModelHeader)
-                          + ( header.material_cnt + mesh_index ) * (uint32_t)sizeof(ModelTableRow);
+u32 element_location = asset_start
+                     + (u32)sizeof(ModelHeader)
+                     + ( header.material_cnt + mesh_index ) * (u32)sizeof(ModelTableRow);
 
-if( fseek( file, element_location, SEEK_SET ) )
+if( !file_seek( file, element_location ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelTableRow element = {};
-if( fread_s( &element, sizeof(element), 1, sizeof(element), file ) != sizeof(element)
+if( !file_read_struct( file, &element )
  || element.kind != ASSET_FILE_MODEL_ELEMENT_KIND_MESH )
     {
-    return( false );
+    return( FALSE );
     }
 
-if( fseek( file, element.starts_at, SEEK_SET ) )
+if( !file_seek( file, element.starts_at ) )
     {
-    return( false );
+    return( FALSE );
     }
 
-return( true );
+return( TRUE );
 
 } /* JumpToModelMesh() */
 
@@ -2034,45 +2029,45 @@ return( true );
 *
 *******************************************************************/
 
-static bool JumpToModelNode( const uint32_t asset_start, const uint32_t node_index, FILE *file )
+static b8 JumpToModelNode( const u32 asset_start, const u32 node_index, fhnd file )
 {
-if( fseek( file, asset_start, SEEK_SET ) )
+if( !file_seek( file, asset_start ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelHeader header = {};
-if( fread_s( &header, sizeof(header), 1, sizeof(header), file ) != sizeof(header) )
+if( !file_read_struct( file, &header ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 /* Element table order is...  
  a) MATERIALS
  b) MESHES
  c) NODES  <-- Look here */
-uint32_t element_location = asset_start
-                          + (uint32_t)sizeof(ModelHeader)
-                          + ( header.material_cnt + header.mesh_count + node_index ) * (uint32_t)sizeof(ModelTableRow);
+u32 element_location = asset_start
+                     + (u32)sizeof(ModelHeader)
+                     + ( header.material_cnt + header.mesh_count + node_index ) * (u32)sizeof(ModelTableRow);
 
-if( fseek( file, element_location, SEEK_SET ) )
+if( !file_seek( file, element_location ) )
     {
-    return( false );
+    return( FALSE );
     }
 
 ModelTableRow element = {};
-if( fread_s( &element, sizeof(element), 1, sizeof(element), file ) != sizeof(element)
+if( !file_read_struct( file, &element )
  || element.kind != ASSET_FILE_MODEL_ELEMENT_KIND_NODE )
     {
-    return( false );
+    return( FALSE );
     }
 
-if( fseek( file, element.starts_at, SEEK_SET ) )
+if( !file_seek( file, element.starts_at ) )
     {
-    return( false );
+    return( FALSE );
     }
 
-return( true );
+return( TRUE );
 
 } /* JumpToModelNode() */
 
