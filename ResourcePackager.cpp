@@ -556,15 +556,22 @@ for( int i = 0; i < argc; i++ )
 
 static void print_args( ProgramArguments *arguments )
 {
-print_info( "Called with the following arguments..." );
-print_info( "\tdefinition: \t%s", arguments->definition.str );
-print_info( "\toutput_binary: \t%s", arguments->output_binary.str );
-print_info( "\toutput_binary_folder: \t%s", arguments->output_binary_folder.str );
-print_info( "\tassets_folder: \t%s", arguments->assets_folder.str );
-print_info( "\toutput_soundbank_folder: \t%s", arguments->output_soundbank_folder.str );
-print_info( "\tinput_fonts_folder: \t%s", arguments->input_fonts_folder.str );
-print_info( "\n" );
+#define LEFT_COLUMN_WIDTH "28"
+#define RIGHT_COLUMN_WIDTH "50"
+#define FORMAT_STRING "\t%-" LEFT_COLUMN_WIDTH"s %-" RIGHT_COLUMN_WIDTH"s"
 
+print_info( "Called with the following arguments..." );
+print_info( FORMAT_STRING, "definition: ", arguments->definition.str);
+print_info( FORMAT_STRING, "output_binary: ", arguments->output_binary.str );
+print_info( FORMAT_STRING, "output_binary_folder: ", arguments->output_binary_folder.str );
+print_info( FORMAT_STRING, "assets_folder: ", arguments->assets_folder.str );
+print_info( FORMAT_STRING, "output_soundbank_folder: ", arguments->output_soundbank_folder.str );
+print_info( FORMAT_STRING, "input_fonts_folder: ", arguments->input_fonts_folder.str );
+printf( "\n" );
+
+#undef LEFT_COLUMN_WIDTH
+#undef RIGHT_COLUMN_WIDTH
+#undef FORMAT_STRING
 } /* parse_args() */
 
 
