@@ -12,5 +12,5 @@ typedef struct
 
 using AssetIdToExtentMap = std::map<AssetFileAssetId, TextureExtent>;
 
-bool ExportTexture_Export( const AssetFileAssetId id, const char *filename, AssetIdToExtentMap &extent_map, WriteStats *stats, AssetFileWriter *output );
+bool ExportTexture_Export( const AssetFileAssetId id, const char *filename, AssetIdToExtentMap &extent_map, WriteStats *stats, std::vector<std::string> &out_strs, AssetFileWriter *output );
 bool ExportTexture_WriteTextureExtents( AssetIdToExtentMap &extent_map, AssetFileWriter *output );

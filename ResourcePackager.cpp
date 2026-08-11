@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <iomanip>
 #include <string>
 #include <sstream>
 #include <unordered_map>
@@ -624,6 +625,10 @@ WriteStats sound_sample_stats = {};
 WriteStats music_clip_stats = {};
 std::vector<ExportSoundPair> sound_sample_pairs;
 std::vector<ExportSoundPair> music_clip_pairs;
+std::vector<std::string> asset_output_strs;
+std::ostringstream os_asset_binary;
+std::ostringstream os_sound_details;
+std::ostringstream os_music_details;
 const cJSON *assets = cJSON_GetObjectItemCaseSensitive( json, "assets" );
 if( !assets )
     {
@@ -665,7 +670,7 @@ for( auto &entry : visitor.asset_map )
         {
         case ASSET_FILE_ASSET_KIND_FONT:
             this_stats = {};
-            if( !ExportFont_Export( entry.first, entry.second.asset_id_str.c_str(), entry.second.filename.c_str(), entry.second.font_point_sz, entry.second.font_glyphs.c_str(), this_stats, &output_file) )
+            if( !ExportFont_Export( entry.first, entry.second.asset_id_str.c_str(), entry.second.filename.c_str(), entry.second.font_point_sz, entry.second.font_glyphs.c_str(), this_stats, asset_output_strs, &output_file) )
                 {
                 print_error( "Failed to load font (%s).  Exiting...", entry.second.filename.c_str() );
                 goto error_cleanup;
@@ -677,7 +682,7 @@ for( auto &entry : visitor.asset_map )
 
         case ASSET_FILE_ASSET_KIND_MODEL:
             this_stats = {};
-            if( !ExportModel_Export( entry.first, entry.second.filename.c_str(), &texture_map, &this_stats, &output_file ) )
+            if( !ExportModel_Export( entry.first, entry.second.filename.c_str(), &texture_map, &this_stats, asset_output_strs, &output_file ) )
                 {
                 print_error( "Failed to load model (%s).  Exiting...", entry.second.filename.c_str() );
                 goto error_cleanup;
@@ -697,7 +702,7 @@ for( auto &entry : visitor.asset_map )
 
         case ASSET_FILE_ASSET_KIND_TEXTURE:
             this_stats = {};
-            if( !ExportTexture_Export( entry.first, entry.second.filename.c_str(), texture_extent_map, &this_stats, &output_file ) )
+            if( !ExportTexture_Export( entry.first, entry.second.filename.c_str(), texture_extent_map, &this_stats, asset_output_strs, &output_file ) )
                 {
                 print_error( "Failed to load texture (%s).  Exiting...", entry.second.filename.c_str() );
                 }
@@ -716,25 +721,41 @@ for( auto &entry : visitor.asset_map )
 if( sound_sample_pairs.size()
  || music_clip_pairs.size() )
     {
-    ExportSounds_CreateBanks( sound_sample_pairs, sound_sample_stats, music_clip_pairs, music_clip_stats, arguments->output_soundbank_folder.str, &output_file );
+    ExportSounds_CreateBanks( sound_sample_pairs, sound_sample_stats, music_clip_pairs, music_clip_stats, asset_output_strs, arguments->output_soundbank_folder.str, &output_file );
     }
 	
+std::sort( asset_output_strs.begin(), asset_output_strs.end() );
+for( auto &asset_output_str : asset_output_strs )
+    {
+    printf( asset_output_str.c_str() );
+    }
+
 success = ExportTexture_WriteTextureExtents( texture_extent_map, &output_file );
 
 success = AssetFile_CloseForWrite( &output_file );
 printf( "\n" );
-print_info( "<" ASSET_FILE_BINARY_FILENAME ">     %d Models (%d bytes), %d Textures (%d bytes), %d Fonts (%d bytes)",
-            (int)models_stats.models_written,     (int)models_stats.written_sz,
-            (int)textures_stats.textures_written, (int)textures_stats.written_sz,
-            (int)fonts_stats.fonts_written,       (int)fonts_stats.written_sz );
-print_info( "<" ASSET_FILE_SOUND_BANK_FILENAME ">  %d samples (%0.1f MB).", (int)sound_sample_stats.sound_samples_written, ( (float)sound_sample_stats.written_sz ) / ( 1024 * 1024 ) );
-print_info( "<" ASSET_FILE_MUSIC_BANK_FILENAME ">   %d clips (%0.1f MB).",   (int)music_clip_stats.music_clips_written,     ( (float)music_clip_stats.written_sz ) / ( 1024 * 1024) );
+
+#define FILENAME_COLUMN_WIDTH "18"
+#define FORMAT_STRING "%-" FILENAME_COLUMN_WIDTH"s %s"
+
+os_asset_binary         << (int)models_stats.models_written     << " Models (" << std::fixed << std::setprecision( 1 ) << (float)models_stats.written_sz / (1024 * 1024) << " MB)"
+                << ", " << (int)textures_stats.textures_written << " Textures (" << std::fixed << std::setprecision( 1 ) << (int)textures_stats.written_sz / (1024 * 1024) << " MB)"
+                << ", " << (int)fonts_stats.fonts_written       << " Fonts ("    << std::fixed << std::setprecision( 1 ) << (int)fonts_stats.written_sz / 1024 << " kB)";
+print_info( FORMAT_STRING, "<" ASSET_FILE_BINARY_FILENAME ">", os_asset_binary.str().c_str() );
+
+os_sound_details << (int)sound_sample_stats.sound_samples_written << " Samples (" << std::fixed << std::setprecision( 1 ) << (float)sound_sample_stats.written_sz / (1024 * 1024) << " MB)";
+print_info( FORMAT_STRING, "<" ASSET_FILE_SOUND_BANK_FILENAME ">", os_sound_details.str().c_str() );
+
+os_music_details << (int)music_clip_stats.music_clips_written << " Clips (" << std::fixed << std::setprecision( 1 ) << (float)music_clip_stats.written_sz / (1024 * 1024) << " MB)";
+print_info( FORMAT_STRING, "<" ASSET_FILE_MUSIC_BANK_FILENAME ">", os_music_details.str().c_str() );
 
 error_cleanup:
 cJSON_Delete( json );
 
 return( success );
 
+#undef FILENAME_COLUMN_WIDTH
+#undef FORMAT_STRING
 } /* process_args() */
 
 

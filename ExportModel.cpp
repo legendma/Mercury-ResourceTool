@@ -162,7 +162,7 @@ static bool     WriteNode( const LocalNode *node, const AssetFileModelIndex elem
 *
 *******************************************************************/
 
-bool ExportModel_Export( const AssetFileAssetId id, const char *filename, const std::unordered_map<std::string, AssetFileAssetId> *texture_map, WriteStats *stats, AssetFileWriter *output )
+bool ExportModel_Export( const AssetFileAssetId id, const char *filename, const std::unordered_map<std::string, AssetFileAssetId> *texture_map, WriteStats *stats, std::vector<std::string> &out_strs, AssetFileWriter *output )
 {
 *stats = {};
 Assimp::Importer importer;
@@ -332,7 +332,13 @@ if( !WriteNode( &root_node, element_count++, &map_mesh_index_to_element_index, &
 stats->nodes_written += node_count;
 size_t write_total_size = AssetFile_GetWriteSize( output ) - write_start_size;
 stats->written_sz += write_total_size;
-print_info( "[MODEL]     %s     meshes: %d, materials: %d, nodes: %d, %d bytes.", strip_filename( filename ).c_str(), (int)stats->meshes_written, (int)stats->materials_written, (int)stats->nodes_written, (int)write_total_size );
+
+std::ostringstream os;
+os << "meshes: " << (int)stats->meshes_written
+   << ", materials: " << (int)stats->materials_written
+   << ", nodes: " << (int)stats->nodes_written
+   << ", " << (int)write_total_size << " bytes";
+out_strs.push_back( sprint_info( ASSET_STR_FORMAT_STRING, "[MODEL]", strip_filename( filename ).c_str(), os.str().c_str() ) );
 
 return( true );
 

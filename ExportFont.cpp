@@ -110,7 +110,7 @@ static bool        WriteToAssetFile( const AssetFileAssetId id, const std::strin
 *
 *******************************************************************/
 
-bool ExportFont_Export( const AssetFileAssetId id, const char *asset_id_str, const char *filename, const int point_size, const char *glyphs, WriteStats &stats, AssetFileWriter *output )
+bool ExportFont_Export( const AssetFileAssetId id, const char *asset_id_str, const char *filename, const int point_size, const char *glyphs, WriteStats &stats, std::vector<std::string> &out_strs, AssetFileWriter *output )
 {
 stats = {};
 size_t write_start_size = AssetFile_GetWriteSize( output );
@@ -258,7 +258,11 @@ if( !WriteToAssetFile( id, strip_filename( asset_id_str ), (uint8_t*)final_textu
 
 size_t write_total_size = AssetFile_GetWriteSize( output ) - write_start_size;
 stats.written_sz += write_total_size;
-print_info( "[FONT]      %s     glyphs: %d, dimensions: (%d x %d), %d bytes.", strip_filename( filename ).c_str(), (int)char_data.size(), tex_width, tex_height, (int)write_total_size );
+std::ostringstream os;
+os << "glyphs: " << (int)char_data.size()
+   << ", dimensions: (" << tex_width << " x " << tex_height << ")"
+   << ", " << (int)write_total_size << " bytes";
+out_strs.push_back( sprint_info( ASSET_STR_FORMAT_STRING, "[FONT]", strip_filename( filename ).c_str(), os.str().c_str() ) );
 
 return( true );
 

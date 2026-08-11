@@ -17,7 +17,7 @@
 *
 *******************************************************************/
 
-bool ExportTexture_Export( const AssetFileAssetId id, const char *filename, AssetIdToExtentMap &extent_map, WriteStats *stats, AssetFileWriter *output )
+bool ExportTexture_Export( const AssetFileAssetId id, const char *filename, AssetIdToExtentMap &extent_map, WriteStats *stats, std::vector<std::string> &out_strs, AssetFileWriter *output )
 {
 *stats = {};
 size_t write_start_size = AssetFile_GetWriteSize( output );
@@ -78,7 +78,10 @@ if( !AssetFile_DescribeTexture2( channel_count, width, height, pixels_length, ou
 
 size_t write_total_size = AssetFile_GetWriteSize( output ) - write_start_size;
 stats->written_sz += write_total_size;
-print_info( "[TEXTURE]   %s     %d bytes.", strip_filename( filename ).c_str(), (int)write_total_size );
+
+std::ostringstream os;
+os << (int)write_total_size << " bytes";
+out_strs.push_back( sprint_info( ASSET_STR_FORMAT_STRING, "[TEXTURE]", strip_filename( filename ).c_str(), os.str().c_str() ) );
 
 return( true );
 

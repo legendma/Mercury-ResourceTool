@@ -19,7 +19,7 @@ using SubsoundsList = std::vector<FSBANK_SUBSOUND>;
 
 
 static bool     BuildBank( const std::string &name, const std::vector<FSBANK_SUBSOUND> &subsounds );
-static uint32_t LogStats( const std::string &format, std::string &filename, std::vector<ExportSoundPair> &assets, WriteStats &stats );
+static uint32_t LogStats( const std::string &format, std::string &filename, std::vector<ExportSoundPair> &assets, std::vector<std::string>& out_strs, WriteStats &stats );
 static void     PrepareBank( const std::vector<ExportSoundPair> &assets, std::vector<AssetFileSoundPair> &pairs, std::vector<FSBANK_SUBSOUND> &subsounds, FilenamesList &filenames );
 static bool     WritePairsToBinary( const AssetFileAssetId bank_id, const AssetFileAssetKind kind, const std::vector<AssetFileSoundPair> &pairs, AssetFileWriter *output );
 
@@ -33,7 +33,7 @@ static bool     WritePairsToBinary( const AssetFileAssetId bank_id, const AssetF
 *
 *******************************************************************/
 
-bool ExportSounds_CreateBanks( std::vector<ExportSoundPair> &samples, WriteStats &samples_stats, std::vector<ExportSoundPair> &music_clips, WriteStats &music_clip_stats, const char *bank_output_folder, AssetFileWriter *output )
+bool ExportSounds_CreateBanks( std::vector<ExportSoundPair> &samples, WriteStats &samples_stats, std::vector<ExportSoundPair> &music_clips, WriteStats &music_clip_stats, std::vector<std::string> &out_strs, const char *bank_output_folder, AssetFileWriter *output )
 {
 samples_stats = {};
 music_clip_stats = {};
@@ -88,8 +88,8 @@ if( !WritePairsToBinary( music_bank_asset_id, ASSET_FILE_ASSET_KIND_SOUND_MUSIC_
     }
 
 /* write stats */
-samples_stats.sound_samples_written  = LogStats( "[SOUND]     %s", samples_filename, samples, samples_stats );
-music_clip_stats.music_clips_written = LogStats( "[MUSIC]     %s", music_filename, music_clips, music_clip_stats );
+samples_stats.sound_samples_written  = LogStats( "[AUDIO_SAMPLE]", samples_filename, samples, out_strs, samples_stats );
+music_clip_stats.music_clips_written = LogStats( "[AUDIO_MUSIC]", music_filename, music_clips, out_strs, music_clip_stats );
 
 return true;
 
@@ -123,12 +123,12 @@ return( true );
 *
 *******************************************************************/
 
-static uint32_t LogStats( const std::string &format, std::string &filename, std::vector<ExportSoundPair> &assets, WriteStats &stats )
+static uint32_t LogStats( const std::string &format, std::string &filename, std::vector<ExportSoundPair> &assets, std::vector<std::string> &out_strs, WriteStats &stats )
 {
 uint32_t asset_cnt = 0;
 for( auto &asset : assets )
     {
-    print_info( format.c_str(), strip_filename( asset.str_filename_w_path.c_str() ).c_str() );
+    out_strs.push_back( sprint_info( ASSET_STR_FORMAT_STRING, format.c_str(), strip_filename( asset.str_filename_w_path.c_str() ).c_str(), "" ) );
     asset_cnt++;
     }
 
