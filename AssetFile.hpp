@@ -24,6 +24,14 @@
                                     "MusicClips.fsb"
 #define ASSET_FILE_MAX_SOUND_NAME_LEN ( 256 )
 
+#define ASSET_FILE_FONT_GLYPH_INVALID_INDEX \
+                                      ( 255 )
+#define ASSET_FILE_FONT_MAX_GLYPHS    ASSET_FILE_FONT_GLYPH_INVALID_INDEX
+
+typedef struct
+    {
+    u8                  indices[ ASSET_FILE_FONT_MAX_GLYPHS ];
+    } AssetFileGlyphMap;
 
 typedef struct _AssetFileNameString
     {
@@ -208,6 +216,16 @@ b8  AssetFile_WriteTextureExtent( const AssetFileAssetId id, const u16 width, co
 
 /*******************************************************************
 *
+*   AssetFile_GlyphMapInit()
+*
+*******************************************************************/
+
+#define AssetFile_GlyphMapInit( _pglyph_map ) \
+    memset( _pglyph_map, ASSET_FILE_FONT_GLYPH_INVALID_INDEX, sizeof( *(_pglyph_map) ) )
+
+
+/*******************************************************************
+*
 *   AssetFile_FNV1a()
 *
 *   DESCRIPTION:
@@ -231,7 +249,7 @@ for( u32 i = 0; i < sz; i++ )
 
 return( ret );
 
-} /* AssetFile_MakeAssetIdFromName() */
+} /* AssetFile_FNV1a() */
 
 
 /*******************************************************************

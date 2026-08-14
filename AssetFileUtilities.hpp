@@ -5,6 +5,7 @@
 
 static __inline b8 file_read_buffer( fhnd hnd, const u64 buffer_sz, const u64 read_sz, void *buffer );
 
+
 /*******************************************************************
 *
 *   file_close()
