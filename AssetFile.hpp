@@ -5,6 +5,7 @@
 
 #include "AssetFileUtilities.hpp"
 
+#define ASSET_FILE_INVALID_ASSET_ID ( 0 )
 #define ASSET_FILE_MAX_NAME_STR_LEN ( 60 )
 
 #define ASSET_FILE_MODEL_VERTEX_UV_COUNT \
@@ -27,6 +28,11 @@
 #define ASSET_FILE_FONT_GLYPH_INVALID_INDEX \
                                       ( 255 )
 #define ASSET_FILE_FONT_MAX_GLYPHS    ASSET_FILE_FONT_GLYPH_INVALID_INDEX
+
+#define ASSET_FILE_TERRAIN_HEIGHT_SAMPLES_EXTENT \
+                        ( 257 )
+#define ASSET_FILE_TERRAIN_AXES_CNT   ( 1 << 8 )/* must be power two */
+#define ASSET_FILE_TERRAIN_CNT        ( ASSET_FILE_TERRAIN_AXES_CNT * ASSET_FILE_TERRAIN_AXES_CNT )
 
 typedef struct
     {
@@ -179,7 +185,7 @@ b8  AssetFile_DescribeModelMesh( const u32 material_element_index, const u32 ver
 b8  AssetFile_DescribeModelNode( const u32 node_count, const f32 *mat4x4, const u32 mesh_count, AssetFileWriter *output );
 b8  AssetFile_DescribeShader( const u32 byte_size, AssetFileWriter *output );
 b8  AssetFile_DescribeTexture( const u32 byte_size, AssetFileWriter *output );
-b8  AssetFile_DescribeTexture2( const u32 channel_cnt, const u32 width, const u32 height, const u32 byte_size, AssetFileWriter *output );
+b8  AssetFile_DescribeTexture2( const u32 channel_cnt, const u32 channel_width, const u32 width, const u32 height, const u32 byte_size, AssetFileWriter *output );
 b8  AssetFile_DescribeTextureExtents( const u16 element_cnt, AssetFileWriter *output );
 b8  AssetFile_EndReadingAsset( AssetFileReader *input );
 b8  AssetFile_EndWritingAsset( AssetFileWriter *output );
@@ -200,7 +206,7 @@ b8  AssetFile_ReadSoundPairsStorageRequirements( u16 *num_elements, AssetFileRea
 b8  AssetFile_ReadShaderStorageRequirements( u32 *byte_count, AssetFileReader *input );
 b8  AssetFile_ReadTextureExtentsStorageRequirements( u16 *num_elements, AssetFileReader *input );
 b8  AssetFile_ReadTextureBinary( const u32 buffer_sz, u32 *read_sz, byte *buffer, AssetFileReader *input );
-b8  AssetFile_ReadTextureStorageRequirements( u32 *channel_cnt, u32 *width, u32 *height, u32 *byte_count, AssetFileReader *input );
+b8  AssetFile_ReadTextureStorageRequirements( u32 *channel_cnt, u32 *channel_width, u32 *width, u32 *height, u32 *byte_count, AssetFileReader *input );
 b8  AssetFile_ReadTextureExtents( const u16 output_cnt, AssetFileTextureExtent *out_elements, AssetFileReader *input );
 b8  AssetFile_ReadTextureExtentsStorageRequirements( u16 *element_cnt, AssetFileReader *input );
 b8  AssetFile_WriteFontGlyph( const u8 glyph, const u16 u0, const u16 v0, const u16 u1, const u16 v1, const f32 pen_dx, const f32 pen_dy, const f32 pen_xadvance, AssetFileWriter *output );
@@ -312,10 +318,32 @@ return( AssetFile_MakeAssetIdFromName( name->str, (u32)strlen( name->str ) ) );
 
 static inline AssetFileNameString AssetFile_CopyNameString( const char *name )
 {
-AssetFileNameString     ret = {};
+AssetFileNameString ret = {};
 strncpy( ret.str, name, sizeof( ret.str ) - 1 );
 ret.str[ sizeof( ret.str ) - 1 ] = '\0';
 
 return( ret );
 
 } /* AssetFile_CopyNameString() */
+
+
+/*******************************************************************
+*
+*   AssetFile_GetTerrainNameString()
+*
+*   DESCRIPTION:
+*       Get the string name of a terrain height asset.
+*
+*******************************************************************/
+
+static inline AssetFileNameString AssetFile_GetTerrainNameString( u32 x, u32 z )
+{
+AssetFileNameString ret = {};
+if( x >= ASSET_FILE_TERRAIN_AXES_CNT ) x = ASSET_FILE_TERRAIN_AXES_CNT - 1;
+if( z >= ASSET_FILE_TERRAIN_AXES_CNT ) z = ASSET_FILE_TERRAIN_AXES_CNT - 1;
+
+sprintf( ret.str, "tex/terr_%u_%u", x, z );
+
+return( ret );
+
+} /* AssetFile_GetTerrainNameString() */

@@ -105,6 +105,8 @@ typedef struct
 
 typedef struct
     {
+    u32                 channel_width;
+                                    /* 1 for 8-bit, 2 for 16-bit... */
     u32                 channel_cnt;/* number of color channels     */
     u32                 width;      /* image width                  */
     u32                 height;     /* image height                 */
@@ -567,7 +569,7 @@ return( TRUE );
 *
 *******************************************************************/
 
-b8 AssetFile_DescribeTexture2( const u32 channel_cnt, const u32 width, const u32 height, const u32 byte_size, AssetFileWriter *output )
+b8 AssetFile_DescribeTexture2( const u32 channel_cnt, const u32 channel_width, const u32 width, const u32 height, const u32 byte_size, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE
  || !output->asset_start
@@ -577,10 +579,11 @@ if( output->kind != ASSET_FILE_ASSET_KIND_TEXTURE
     }
 
 TextureHeader header = {};
-header.byte_size   = byte_size;
-header.width       = width;
-header.height      = height;
-header.channel_cnt = channel_cnt;
+header.byte_size     = byte_size;
+header.width         = width;
+header.height        = height;
+header.channel_cnt   = channel_cnt;
+header.channel_width = channel_width;
 
 ensure( file_write_struct( output->hnd, &header ) );
 output->caret = (u32)file_get_pos( output->hnd );
@@ -1294,7 +1297,7 @@ return( TRUE );
 *
 *******************************************************************/
 
-b8 AssetFile_ReadShaderBinary( const u32 buffer_sz, u32 *read_sz, u8 *buffer, AssetFileReader *input )
+b8 AssetFile_ReadShaderBinary( const u32 buffer_sz, u32 *read_sz, byte *buffer, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_SHADER
  || !input->asset_start
@@ -1481,11 +1484,12 @@ return( TRUE );
 *
 *******************************************************************/
 
-b8 AssetFile_ReadTextureStorageRequirements( u32 *channel_cnt, u32 *width, u32 *height, u32 *byte_count, AssetFileReader *input )
+b8 AssetFile_ReadTextureStorageRequirements( u32 *channel_cnt, u32 *channel_width, u32 *width, u32 *height, u32 *byte_count, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_TEXTURE
  || !input->asset_start
  || channel_cnt == NULL
+ || channel_width == NULL
  || width == NULL
  || height == NULL
  || byte_count == NULL )
@@ -1504,6 +1508,7 @@ if( !file_read_struct( input->hnd, &header ) )
     return( FALSE );
     }
 
+*channel_width = header.channel_width;
 *channel_cnt = header.channel_cnt;
 *width = header.width;
 *height = header.height;

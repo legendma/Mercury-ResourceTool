@@ -24,8 +24,23 @@ size_t write_start_size = AssetFile_GetWriteSize( output );
 int width = {};
 int height = {};
 int channel_count = {};
+uint8_t channel_width = 1;
 
-unsigned char *image = stbi_load( filename, &width, &height, &channel_count, 0 );
+if( stbi_is_16_bit( filename ) )
+    {
+    channel_width = 2;
+    }
+
+unsigned char *image = NULL;
+if( channel_width == 2 )
+    {
+    image = (unsigned char*)stbi_load_16( filename, &width, &height, &channel_count, 0 );
+    }
+else
+    {
+    image = stbi_load( filename, &width, &height, &channel_count, 0 );
+    }
+
 if( !image )
     {
     print_error( "ExportTexture_Export() could not read image from file (%s).", filename );
@@ -67,8 +82,8 @@ if( !AssetFile_BeginWritingAsset( id, ASSET_FILE_ASSET_KIND_TEXTURE, output ) )
     return( false );
     }
 
-int pixels_length = width * height * channel_count;
-if( !AssetFile_DescribeTexture2( channel_count, width, height, pixels_length, output )
+int pixels_length = width * height * channel_count * channel_width;
+if( !AssetFile_DescribeTexture2( channel_count, channel_width, width, height, pixels_length, output )
  || !AssetFile_WriteTexture( image, pixels_length, output ) )
     {
     print_error( "ExportTexture_Export could not write texture asset header to binary (%s).", filename );
