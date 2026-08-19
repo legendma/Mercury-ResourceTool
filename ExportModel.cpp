@@ -36,7 +36,7 @@ typedef struct _LocalNode
 *
 *******************************************************************/
 
-static __inline void LoadMatrix( const aiMatrix4x4 *a, float *b )
+static inline void LoadMatrix( const aiMatrix4x4 *a, float *b )
 {
 b[  0 ] = a->a1;
 b[  1 ] = a->a2;
@@ -64,7 +64,7 @@ b[ 15 ] = a->d4;
 *
 *******************************************************************/
 
-static __inline void Multiply4x4( const float *a, const float *b, float *c )
+static inline void Multiply4x4( const float *a, const float *b, float *c )
 {
 c[  0 ] = a[ 0 + 0 * 4 ] * b[ 0 + 0 * 4 ]
         + a[ 1 + 0 * 4 ] * b[ 0 + 1 * 4 ]

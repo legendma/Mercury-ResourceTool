@@ -320,7 +320,7 @@ return( ret );
 *
 *******************************************************************/
 
-static __inline bool str_contains_str( const char *str, const bool case_insensitive, const char *search )
+static inline bool str_contains_str( const char *str, const bool case_insensitive, const char *search )
 {
 if( !search
  || search[ 0 ] == 0 )

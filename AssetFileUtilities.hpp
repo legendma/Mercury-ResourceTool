@@ -3,7 +3,7 @@
 
 #include "Global.hpp"
 
-static __inline b8 file_read_buffer( fhnd hnd, const u64 buffer_sz, const u64 read_sz, void *buffer );
+static inline b8 file_read_buffer( fhnd hnd, const u64 buffer_sz, const u64 read_sz, void *buffer );
 
 
 /*******************************************************************
@@ -12,7 +12,7 @@ static __inline b8 file_read_buffer( fhnd hnd, const u64 buffer_sz, const u64 re
 *
 *******************************************************************/
 
-static __inline b8 file_close( fhnd hnd )
+static inline b8 file_close( fhnd hnd )
 {
 int result = fclose( (FILE*)hnd );
 return( result == 0 );
@@ -26,7 +26,7 @@ return( result == 0 );
 *
 *******************************************************************/
 
-static __inline b8 file_delete( const char *filename_w_path )
+static inline b8 file_delete( const char *filename_w_path )
 {
 return( !remove( filename_w_path ) );
 
@@ -39,7 +39,7 @@ return( !remove( filename_w_path ) );
 *
 *******************************************************************/
 
-static __inline u64 file_get_pos( fhnd hnd )
+static inline u64 file_get_pos( fhnd hnd )
 {
 long result = ftell( (FILE*)hnd );
 if( result < 0 )
@@ -58,7 +58,7 @@ return( (u64)result );
 *
 *******************************************************************/
 
-static __inline b8 file_open( const char *filename_w_path, const char *mode, fhnd *hnd )
+static inline b8 file_open( const char *filename_w_path, const char *mode, fhnd *hnd )
 {
 *hnd = (fhnd)fopen( filename_w_path, mode );
 
@@ -73,7 +73,7 @@ return( *hnd != 0 );
 *
 *******************************************************************/
 
-static __inline b8 file_read( fhnd hnd, const u64 read_sz, void *out )
+static inline b8 file_read( fhnd hnd, const u64 read_sz, void *out )
 {
 return( file_read_buffer( hnd, read_sz, read_sz, out ) );
 
@@ -106,7 +106,7 @@ return( file_read_buffer( hnd, read_sz, read_sz, out ) );
 *
 *******************************************************************/
 
-static __inline b8 file_read_buffer( fhnd hnd, const u64 buffer_sz, const u64 read_sz, void *buffer )
+static inline b8 file_read_buffer( fhnd hnd, const u64 buffer_sz, const u64 read_sz, void *buffer )
 {
 if( read_sz > buffer_sz )
     {
@@ -125,7 +125,7 @@ return( got_sz == read_sz );
 *
 *******************************************************************/
 
-static __inline b8 file_rename( const char *from_filename_w_path, const char *to_filename_w_path )
+static inline b8 file_rename( const char *from_filename_w_path, const char *to_filename_w_path )
 {
 return( !rename( from_filename_w_path, to_filename_w_path ) );
 
@@ -138,7 +138,7 @@ return( !rename( from_filename_w_path, to_filename_w_path ) );
 *
 *******************************************************************/
 
-static __inline void file_rewind( fhnd hnd )
+static inline void file_rewind( fhnd hnd )
 {
 rewind( (FILE*)hnd );
 
@@ -151,7 +151,7 @@ rewind( (FILE*)hnd );
 *
 *******************************************************************/
 
-static __inline b8 file_seek( fhnd hnd, const u64 location )
+static inline b8 file_seek( fhnd hnd, const u64 location )
 {
 int result = fseek( (FILE*)hnd, (long)location, SEEK_SET );
 return( result == 0 );
@@ -165,7 +165,7 @@ return( result == 0 );
 *
 *******************************************************************/
 
-static __inline b8 file_seek_rel( fhnd hnd, const s64 offset )
+static inline b8 file_seek_rel( fhnd hnd, const s64 offset )
 {
 int result = fseek( (FILE*)hnd, (long)offset, SEEK_CUR );
 return( result == 0 );
@@ -179,7 +179,7 @@ return( result == 0 );
 *
 *******************************************************************/
 
-static __inline b8 file_write( fhnd hnd, const u64 sz, const void *data )
+static inline b8 file_write( fhnd hnd, const u64 sz, const void *data )
 {
 u64 did_sz = (u64)fwrite( data, 1, sz, (FILE*)hnd );
 return( did_sz == sz );
