@@ -338,6 +338,7 @@ glyphs.insert( '\'' );
 glyphs.insert( '\"' );
 glyphs.insert( '\\' );
 glyphs.insert( '/' );
+glyphs.insert( '_' );
 
 }   /* AddAllSpecial() */
 
