@@ -81,6 +81,7 @@ typedef struct _DefinitionVisitor
         std::string     asset_id_str;
         std::string     font_glyphs;
         int             font_point_sz;
+        float           global_scale;
         //std::string     shader_entry_point;
 
         } AssetDescriptor;
@@ -140,7 +141,7 @@ typedef struct _DefinitionVisitor
     *
     ***************************************************************/
 
-    virtual void VisitModel( const char *asset_id, const char *filename )
+    virtual void VisitModel( const char *asset_id, const char *filename, const float global_scale )
     {
     std::string stripped = strip_filename( filename );
     if( std::find( seen_filenames.begin(), seen_filenames.end(), stripped ) != seen_filenames.end() )
@@ -162,6 +163,7 @@ typedef struct _DefinitionVisitor
     descriptor.filename          = std::string( filename );
     descriptor.stripped_filename = stripped;
     descriptor.asset_id_str      = std::string( asset_id );
+    descriptor.global_scale      = global_scale;
     
     asset_map[ id ] = descriptor;
 
@@ -682,7 +684,7 @@ for( auto &entry : visitor.asset_map )
 
         case ASSET_FILE_ASSET_KIND_MODEL:
             this_stats = {};
-            if( !ExportModel_Export( entry.first, entry.second.filename.c_str(), &texture_map, &this_stats, asset_output_strs, &output_file ) )
+            if( !ExportModel_Export( entry.first, entry.second.filename.c_str(), entry.second.global_scale, &texture_map, &this_stats, asset_output_strs, &output_file ) )
                 {
                 print_error( "Failed to load model (%s).  Exiting...", entry.second.filename.c_str() );
                 goto error_cleanup;
@@ -871,6 +873,7 @@ if( models )
         {
         const cJSON *model_filename = cJSON_GetObjectItemCaseSensitive( model, "filename" );
         const cJSON *model_asset_id = cJSON_GetObjectItemCaseSensitive( model, "assetid" );
+        const cJSON *model_global_scale = cJSON_GetObjectItemCaseSensitive( model, "global_scale" );
 
         if( !model_filename
          || !cJSON_IsString( model_filename ) )
@@ -884,6 +887,18 @@ if( models )
             print_error( "Could not find asset ID for model (%s)", cJSON_Print( model ) );
             return( false );
             }
+
+        float global_scale = 1.0f;
+        if( model_global_scale )
+            {
+            if( !cJSON_IsNumber( model_global_scale ) )
+                {
+                print_error( "Unrecognized global scale value for model (%s)", cJSON_Print( model ) );
+                return( false );
+                }
+
+            global_scale = (float)model_global_scale->valuedouble;
+            }
       
         std::string model_filename_str( basefolder );
         model_filename_str.append( model_filename->valuestring );
@@ -895,7 +910,28 @@ if( models )
 
         std::ostringstream os;
         os << "mdl/" << model_asset_id->valuestring;
-        visitor->VisitModel( os.str().c_str(), model_filename_str.c_str() );
+        visitor->VisitModel( os.str().c_str(), model_filename_str.c_str(), global_scale );
+
+        std::string subfolder;
+        std::string filename = std::string( model_filename->valuestring );
+        uint32_t subfolder_pos = filename.find( '/' );
+        if( subfolder_pos != filename.npos )
+            {
+            subfolder = filename.substr( 0, subfolder_pos + 1 );
+            }
+
+        std::vector<std::string> model_texture_names;
+        ExportModel_GetTextures( model_filename_str.c_str(), model_texture_names );
+        for( auto &texture : model_texture_names )
+            {
+            std::string texture_filename_str( basefolder );
+            texture_filename_str.append( subfolder );
+            texture_filename_str.append( texture );
+            
+            std::ostringstream os;
+            os << "tex/" << texture.substr( 0, texture.find_last_of( "." ) );
+            visitor->VisitTexture( os.str().c_str(), texture_filename_str.c_str() );
+            }
         }
 
     }

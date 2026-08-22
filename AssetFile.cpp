@@ -7,7 +7,8 @@
 
 #define make_fourcc( _a, _b, _c, _d ) \
     ( ( _a << 0 ) | ( _b << 8 ) | ( _c << 16 ) | (_d << 24 ) )
-        
+#define array_cnt( _arr ) \
+    ( sizeof( _arr ) / sizeof( *(_arr) ) )
 
 static const u32 ASSET_FILE_MAGIC = make_fourcc( 'M', 'e', 'r', 'c' );
 
@@ -78,17 +79,22 @@ typedef struct
 
 typedef struct
     {
+    AssetFileAssetId    asset_id;   /* mesh asset ID                */
     u32                 vertex_cnt; /* number of vertices           */
     u32                 index_cnt;  /* number of indices            */
     u32                 material;   /* material element index       */
+    f32                 abb_center[ 3 ];
+                                    /* center position of ABB3      */
+    f32                 abb_half_extents[ 3 ];
+                                    /* half width/height of ABB3    */
     } ModelMeshHeader;
 
 typedef struct
     {
     u32                 node_count; /* number of child nodes        */
     u32                 mesh_count; /* number of child meshes       */
-    f32                 transform[ 16 ];
-                                    /* row major 4x4 matrix         */
+    f32                 transform[ 10 ];
+                                    /* S3, R4, T3                   */
     } ModelNodeHeader;
 
 typedef struct
@@ -419,7 +425,7 @@ return( TRUE );
 *
 *******************************************************************/
 
-b8 AssetFile_DescribeModelMaterial( const AssetFileModelMaterialBits maps, AssetFileWriter *output )
+b8 AssetFile_DescribeModelMaterial( const AssetFileModelMaterialBits maps, const char *mat_name, const char *spc_name, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start )
@@ -431,6 +437,12 @@ ModelMaterialHeader header = {};
 header.map_bits = maps;
 
 ensure( file_write_struct( output->hnd, &header ) );
+
+u32 len = strlen( mat_name );
+ensure( file_write_array( output->hnd, len + 1, mat_name ) );
+len = strlen( spc_name );
+ensure( file_write_array( output->hnd, len + 1, spc_name ) );
+
 output->caret = (u32)file_get_pos( output->hnd );
 
 return( TRUE );
@@ -447,7 +459,7 @@ return( TRUE );
 *
 *******************************************************************/
 
-b8 AssetFile_DescribeModelMesh( const u32 material_element_index, const u32 vertex_cnt, const u32 index_cnt, AssetFileWriter *output )
+b8 AssetFile_DescribeModelMesh( const u32 material_element_index, const u32 vertex_cnt, const u32 index_cnt, const f32 *abb3_center, const f32 *abb3_half_extents, const AssetFileAssetId asset_id, const char *mesh_name, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start )
@@ -456,11 +468,21 @@ if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
     }
 
 ModelMeshHeader header = {};
-header.vertex_cnt = vertex_cnt;
-header.index_cnt  = index_cnt;
-header.material   = material_element_index;
+header.asset_id              = asset_id;
+header.vertex_cnt            = vertex_cnt;
+header.index_cnt             = index_cnt;
+header.material              = material_element_index;
+header.abb_center[ 0 ]       = abb3_center[ 0 ];
+header.abb_center[ 1 ]       = abb3_center[ 1 ];
+header.abb_center[ 2 ]       = abb3_center[ 2 ];
+header.abb_half_extents[ 0 ] = abb3_half_extents[ 0 ];
+header.abb_half_extents[ 1 ] = abb3_half_extents[ 1 ];
+header.abb_half_extents[ 2 ] = abb3_half_extents[ 2 ];
 
 ensure( file_write_struct( output->hnd, &header ) );
+
+u32 len = strlen( mesh_name );
+ensure( file_write_array( output->hnd, len + 1, mesh_name ) );
 
 output->caret = (u32)file_get_pos( output->hnd );
 
@@ -478,7 +500,7 @@ return( TRUE );
 *
 *******************************************************************/
 
-b8 AssetFile_DescribeModelNode( const u32 node_count, const f32 *mat4x4, const u32 mesh_count, AssetFileWriter *output )
+b8 AssetFile_DescribeModelNode( const u32 node_count, const f32 *srt, const u32 mesh_count, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start
@@ -491,7 +513,7 @@ if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
 ModelNodeHeader header = {};
 header.node_count = node_count;
 header.mesh_count = mesh_count;
-memcpy( header.transform, mat4x4, _countof( header.transform ) * sizeof( *header.transform ) );
+memcpy( header.transform, srt, _countof( header.transform ) * sizeof( *header.transform ) );
 
 ensure( file_write_struct( output->hnd, &header ) );
 
@@ -1006,6 +1028,44 @@ for( u32 i = 0; i < header.material_cnt; i++ )
         return( FALSE );
         }
 
+    char character;
+    u32 rem_len;
+    
+    rem_len = array_cnt( materials->mtl_name.str );
+    materials[ i ].mtl_name.str[ array_cnt( materials->mtl_name.str ) - rem_len-- ] = 'm';
+    materials[ i ].mtl_name.str[ array_cnt( materials->mtl_name.str ) - rem_len-- ] = 't';
+    materials[ i ].mtl_name.str[ array_cnt( materials->mtl_name.str ) - rem_len-- ] = 'l';
+    materials[ i ].mtl_name.str[ array_cnt( materials->mtl_name.str ) - rem_len-- ] = '/';
+
+    while( rem_len
+        && file_read( input->hnd, 1, &character ) )
+        {
+        materials[ i ].mtl_name.str[ array_cnt( materials->mtl_name.str ) - rem_len-- ] = character;
+        if( !character )
+            {
+            break;
+            }
+        }
+    
+    rem_len = array_cnt( materials->spc_name.str );
+    materials[ i ].spc_name.str[ array_cnt( materials->spc_name.str ) - rem_len-- ] = 's';
+    materials[ i ].spc_name.str[ array_cnt( materials->spc_name.str ) - rem_len-- ] = 'p';
+    materials[ i ].spc_name.str[ array_cnt( materials->spc_name.str ) - rem_len-- ] = 'c';
+    materials[ i ].spc_name.str[ array_cnt( materials->spc_name.str ) - rem_len-- ] = '/';
+
+    while( rem_len
+        && file_read( input->hnd, 1, &character ) )
+        {
+        materials[ i ].spc_name.str[ array_cnt( materials->spc_name.str ) - rem_len-- ] = character;
+        if( !character )
+            {
+            break;
+            }
+        }
+
+    materials[ i ].mtl_name.str[ array_cnt( materials->mtl_name.str ) - 1 ] = 0;
+    materials[ i ].spc_name.str[ array_cnt( materials->spc_name.str ) - 1 ] = 0;
+
     materials[ i ].bits = material.map_bits;
     for( u32 j = 0; j < ASSET_FILE_MODEL_TEXTURE_COUNT; j++ )
         {
@@ -1023,6 +1083,32 @@ for( u32 i = 0; i < header.material_cnt; i++ )
         materials[ i ].textures[ j ] = element;
         }
 
+    for( u32 j = 0; j < ASSET_FILE_MODEL_TEXTURE_COUNT; j++ )
+        {
+        if( !( material.map_bits & ( 1 << j ) ) )
+            {
+            continue;
+            }
+
+        AssetFileNameString *element = materials[ i ].texture_names + j;
+        rem_len = array_cnt( element->str );
+        element->str[ array_cnt( element->str ) - rem_len-- ] = 't';
+        element->str[ array_cnt( element->str ) - rem_len-- ] = 'e';
+        element->str[ array_cnt( element->str ) - rem_len-- ] = 'x';
+        element->str[ array_cnt( element->str ) - rem_len-- ] = '/';
+
+        while( rem_len
+            && file_read( input->hnd, 1, &character ) )
+            {
+            element->str[ array_cnt( materials->mtl_name.str ) - rem_len-- ] = character;
+            if( !character )
+                {
+                break;
+                }
+            }
+
+        element->str[ array_cnt( element->str ) - 1 ] = 0;
+        }
     }
 
 *material_count = header.material_cnt;
@@ -1067,6 +1153,13 @@ if( index_capacity < mesh.index_cnt )
     {
     return( FALSE );
     }
+
+/* skip mesh name */
+char dummy = 0xff;
+while( dummy )
+    {
+    file_read( input->hnd, 1, &dummy );
+    }
     
 /* Geometry order is... 
  a) VERTICES
@@ -1089,6 +1182,66 @@ return( TRUE );
 
 /*******************************************************************
 *
+*   AssetFile_ReadModelMeshInfo()
+*
+*   DESCRIPTION:
+*       Get the requested model's mesh description.
+*
+*******************************************************************/
+
+b8 AssetFile_ReadModelMeshInfo( const u32 mesh_index, AssetFileModelMeshInfo *info, AssetFileReader *input )
+{
+if( input->kind != ASSET_FILE_ASSET_KIND_MODEL
+ || !input->asset_start
+ || info == NULL )
+    {
+    return( FALSE );
+    }
+
+if( !JumpToModelMesh( input->asset_start, mesh_index, input->hnd ) )
+    {
+    return( FALSE );
+    }
+
+ModelMeshHeader mesh = {};
+if( !file_read_struct( input->hnd, &mesh ) )
+    {
+    return( FALSE );
+    }
+
+info->asset_id   = mesh.asset_id;
+info->mtl_index  = mesh.material;
+info->vertex_cnt = mesh.vertex_cnt;
+info->index_cnt  = mesh.index_cnt;
+
+u32 rem_len = array_cnt( info->mesh_name.str );
+info->mesh_name.str[ array_cnt( info->mesh_name.str ) - rem_len-- ] = 'm';
+info->mesh_name.str[ array_cnt( info->mesh_name.str ) - rem_len-- ] = 's';
+info->mesh_name.str[ array_cnt( info->mesh_name.str ) - rem_len-- ] = 'h';
+info->mesh_name.str[ array_cnt( info->mesh_name.str ) - rem_len-- ] = '/';
+
+b8 ret = FALSE;
+char character;
+while( rem_len
+    && file_read( input->hnd, 1, &character ) )
+    {
+    info->mesh_name.str[ array_cnt( info->mesh_name.str ) - rem_len-- ] = character;
+    if( !character )
+        {
+        ret = TRUE;
+        break;
+        }
+    }
+
+info->mesh_name.str[ array_cnt( info->mesh_name.str ) - 1 ] = 0;
+
+return( ret );
+
+}   /* AssetFile_ReadModelMeshInfo() */
+
+
+/*******************************************************************
+*
 *   AssetFile_ReadModelMeshVertices()
 *
 *   DESCRIPTION:
@@ -1096,7 +1249,7 @@ return( TRUE );
 *
 *******************************************************************/
 
-b8 AssetFile_ReadModelMeshVertices( const u32 mesh_index, const u32 vertex_capacity, AssetFileModelIndex *material_index, u32 *vertex_count, AssetFileModelVertex *vertices, AssetFileReader *input )
+b8 AssetFile_ReadModelMeshVertices( const u32 mesh_index, const u32 vertex_capacity, u32 *vertex_count, AssetFileModelVertex *vertices, AssetFileReader *input )
 {
 if( input->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !input->asset_start
@@ -1124,9 +1277,11 @@ if( vertex_capacity < mesh.vertex_cnt )
     return( FALSE );
     }
 
-if( material_index )
+/* skip mesh name */
+char dummy = 0xff;
+while( dummy )
     {
-    *material_index = (AssetFileModelIndex)mesh.material;
+    file_read( input->hnd, 1, &dummy );
     }
     
 /* Geometry order is... 
@@ -1197,7 +1352,9 @@ for( u32 i = 0; i < header.node_count; i++ )
     AssetFileModelIndex element;
 
     /* transform */
-    memcpy( nodes[ i ].transform, node.transform, _countof( nodes->transform ) * sizeof( *nodes->transform ) );
+    memcpy( nodes[ i ].scale,     node.transform + 0, _countof( nodes->scale )     * sizeof( *nodes->scale ) );
+    memcpy( nodes[ i ].rotate,    node.transform + 3, _countof( nodes->rotate )    * sizeof( *nodes->rotate ) );
+    memcpy( nodes[ i ].translate, node.transform + 7, _countof( nodes->translate ) * sizeof( *nodes->translate ) );
 
     /* nodes */
     for( u32 j = 0; j < node.node_count; j++ )
@@ -1633,7 +1790,7 @@ return( TRUE );
 *
 *******************************************************************/
 
-b8 AssetFile_WriteModelMaterialTextureMaps( const AssetFileAssetId *asset_ids, const u8 count, AssetFileWriter *output )
+b8 AssetFile_WriteModelMaterialTextureMaps( const AssetFileAssetId *asset_ids, const char **str_names, const u8 count, AssetFileWriter *output )
 {
 if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
  || !output->asset_start )
@@ -1642,6 +1799,12 @@ if( output->kind != ASSET_FILE_ASSET_KIND_MODEL
     }
 
 ensure( file_write_array( output->hnd, count, asset_ids ) );
+
+for( u32 i = 0; i < count; i++ )
+    {
+    u32 len = strlen( str_names[ i ] ) + 1;
+    ensure( file_write_array( output->hnd, len, str_names[ i ] ) );
+    }
 
 output->caret = (u32)file_get_pos( output->hnd );
 

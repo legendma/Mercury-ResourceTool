@@ -7,24 +7,24 @@
 #include "ExportModel.hpp"
 #include "ResourceUtilities.hpp"
 
+#define SCALE_COMPONENT_FLOATS      ( 3 )
+#define ROTATION_COMPONENT_FLOATS   ( 4 )
+#define TRANSLATION_COMPONENT_FLOATS \
+                                    ( 3 )
 
 typedef struct
 	{
-	float                  a[ 16 ];
-	} LocalMatrix4x4;
-
-static const LocalMatrix4x4 IDENTITY_4x4 = 
-	{
-	1.0f, 0.0f, 0.0f, 0.0f,
-	0.0f, 1.0f, 0.0f, 0.0f,
-	0.0f, 0.0f, 1.0f, 0.0f,
-	0.0f, 0.0f, 0.0f, 1.0f
-	};
+	float                  a[ SCALE_COMPONENT_FLOATS
+	                        + ROTATION_COMPONENT_FLOATS
+							+ TRANSLATION_COMPONENT_FLOATS ]; /* stored [ s.x, s.y, s.z,
+							                                              r.x, r.y, r.z, r.w,
+																		  t.x, t.y, t.z ] */
+	} LocalTransform;
 
 typedef struct _LocalNode
 	{
 	const aiNode          *node;
-	LocalMatrix4x4         transform;
+	LocalTransform         transform;
 	std::vector<_LocalNode>
 	                       children;
 	} LocalNode;
@@ -32,30 +32,29 @@ typedef struct _LocalNode
 
 /*******************************************************************
 *
-*   LoadMatrix()
+*   LoadTransform()
 *
 *******************************************************************/
 
-static inline void LoadMatrix( const aiMatrix4x4 *a, float *b )
+static inline void LoadTransform( LocalNode *node )
 {
-b[  0 ] = a->a1;
-b[  1 ] = a->a2;
-b[  2 ] = a->a3;
-b[  3 ] = a->a4;
-b[  4 ] = a->b1;
-b[  5 ] = a->b2;
-b[  6 ] = a->b3;
-b[  7 ] = a->b4;
-b[  8 ] = a->c1;
-b[  9 ] = a->c2;
-b[ 10 ] = a->c3;
-b[ 11 ] = a->c4;
-b[ 12 ] = a->d1;
-b[ 13 ] = a->d2;
-b[ 14 ] = a->d3;
-b[ 15 ] = a->d4;
+aiVector3D scale;
+aiQuaternion rotation;
+aiVector3D translation;
+node->node->mTransformation.Decompose( scale, rotation, translation );
 
-}   /* LoadMatrix() */
+node->transform.a[ 0 ] = scale.x;
+node->transform.a[ 1 ] = scale.y;
+node->transform.a[ 2 ] = scale.z;
+node->transform.a[ 3 ] = rotation.x;
+node->transform.a[ 4 ] = rotation.y;
+node->transform.a[ 5 ] = rotation.z;
+node->transform.a[ 6 ] = rotation.w;
+node->transform.a[ 7 ] = translation.x;
+node->transform.a[ 8 ] = translation.y;
+node->transform.a[ 9 ] = translation.z;
+
+}   /* LoadTransform() */
 
 
 /*******************************************************************
@@ -148,8 +147,13 @@ c[ 15 ] = a[ 0 + 3 * 4 ] * b[ 3 + 0 * 4 ]
 
 }   /* Multiply4x4() */
 
+static const unsigned int IMPORT_FLAGS = aiProcess_Triangulate
+                                       | aiProcess_RemoveRedundantMaterials
+									   | aiProcess_FlipUVs
+									   | aiProcess_GlobalScale;
 
-static uint32_t ParseNode( const aiNode *node, const LocalMatrix4x4 *transform, LocalNode *parent );
+
+static uint32_t ParseNode( const aiNode *node, LocalNode *parent );
 static bool     WriteNode( const LocalNode *node, const AssetFileModelIndex element_id, const std::unordered_map<uint32_t, uint32_t> *mesh_index_to_element_index, uint32_t *element_count, AssetFileWriter *output );
 
 
@@ -162,13 +166,14 @@ static bool     WriteNode( const LocalNode *node, const AssetFileModelIndex elem
 *
 *******************************************************************/
 
-bool ExportModel_Export( const AssetFileAssetId id, const char *filename, const std::unordered_map<std::string, AssetFileAssetId> *texture_map, WriteStats *stats, std::vector<std::string> &out_strs, AssetFileWriter *output )
+bool ExportModel_Export( const AssetFileAssetId id, const char *filename, const float global_scale, const std::unordered_map<std::string, AssetFileAssetId> *texture_map, WriteStats *stats, std::vector<std::string> &out_strs, AssetFileWriter *output )
 {
 *stats = {};
 Assimp::Importer importer;
 size_t write_start_size = AssetFile_GetWriteSize( output );
 
-const aiScene *scene = importer.ReadFile( std::string( filename ), aiProcess_Triangulate | aiProcess_ConvertToLeftHanded );
+importer.SetPropertyFloat( AI_CONFIG_GLOBAL_SCALE_FACTOR_KEY, global_scale );
+const aiScene *scene = importer.ReadFile( std::string( filename ), IMPORT_FLAGS );
 if( !scene )
     {
 	print_error( "ExportModel_Export() could not read scene from file (%s).", filename );
@@ -182,14 +187,23 @@ if( !AssetFile_BeginWritingAsset( id, ASSET_FILE_ASSET_KIND_MODEL, output ) )
 	}
 
 LocalNode root_node = {};
-LoadMatrix( &scene->mRootNode->mTransformation, root_node.transform.a );
 root_node.node = scene->mRootNode;
+LoadTransform( &root_node );
 uint32_t node_count = 1;
 
 for( unsigned int i = 0; i < scene->mRootNode->mNumChildren; i++ )
 	{
-	node_count += ParseNode( root_node.node, &root_node.transform, &root_node );
+	node_count += ParseNode( root_node.node, &root_node );
 	}
+
+//for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
+//	{
+//    aiString name;
+//    scene->mMaterials[i]->Get(AI_MATKEY_NAME, name);
+//    printf( "Material %d: '%s'\n", i, name.C_Str() );
+//    
+//    // Also print how many meshes reference this material
+//	}
 
 if( !AssetFile_DescribeModel( node_count, (uint32_t)scene->mNumMeshes, (uint32_t)scene->mNumMaterials, output ) )
 	{
@@ -205,16 +219,29 @@ std::unordered_map<uint32_t, uint32_t> map_material_index_to_element_index;
 for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 	{
 	const aiMaterial *material = scene->mMaterials[ i ];
+	aiString mat_name;
+	material->Get( AI_MATKEY_NAME, mat_name );
+	std::string material_and_special = std::string( mat_name.C_Str() );
+	uint32_t colon = (uint32_t)material_and_special.find( ':' );
+	if( colon == material_and_special.npos )
+		{
+		print_error( "ExportModel_Export() found malformed material name (%s).", material_and_special.c_str() );
+		return( false );
+		}
+
+	std::string material_name = material_and_special.substr( 0, colon );
+	std::string special_name = material_and_special.substr( colon + 1 );
 
 	/* Texture Maps */
 	AssetFileModelMaterialBits mat_props = 0;
 	AssetFileAssetId diffuse_map_asset_id;
+	std::vector<std::string> texture_str_names;
 
-	if( material->GetTextureCount( aiTextureType_DIFFUSE ) > 0 )
+	if( material->GetTextureCount( aiTextureType_BASE_COLOR ) > 0 )
 		{
 		/* albedo */
 		aiString diffuse_filename;
-		if( material->Get( AI_MATKEY_TEXTURE( aiTextureType_DIFFUSE, 0 ), diffuse_filename ) != aiReturn_SUCCESS )
+		if( material->GetTexture( aiTextureType_BASE_COLOR, 0, &diffuse_filename ) != aiReturn_SUCCESS )
 			{
 			print_error( "ExportModel_Export() unable to find diffuse texture (%s).", diffuse_filename.C_Str() );
 			return( false );
@@ -224,10 +251,11 @@ for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 		std::unordered_map<std::string, AssetFileAssetId>::const_iterator it = texture_map->find( stripped );
 		if( it == texture_map->end() )
 			{
-			print_error( "ExportModel_Export() encountered a texture (%s) in model (%s) which was not defined in the definition file.", diffuse_filename.C_Str(), filename );
+			print_error( "ExportModel_Export() encountered a texture (%s) in model (%s) which was not added to the texture table.", diffuse_filename.C_Str(), filename );
 			return( false );
 			}
 		
+		texture_str_names.push_back( std::string( diffuse_filename.C_Str() ) );
 		diffuse_map_asset_id = it->second;
 		mat_props |= ASSET_FILE_MODEL_MATERIAL_BIT_ALBEDO_MAP;
 		}
@@ -242,20 +270,26 @@ for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
 
 	/* Write it */
 	if( !AssetFile_BeginWritingModelElement( ASSET_FILE_MODEL_ELEMENT_KIND_MATERIAL, element_count, output )
-	 || !AssetFile_DescribeModelMaterial( mat_props, output ) )
+	 || !AssetFile_DescribeModelMaterial( mat_props, material_name.c_str(), special_name.c_str(), output ) )
 		{
 		print_error( "ExportModel_Export() could not start writing new model material element (%s).", filename );
 		return( false );
 		}
 
 	AssetFileAssetId map_array[ ASSET_FILE_MODEL_TEXTURE_COUNT ];
+	const char *name_array[ ASSET_FILE_MODEL_TEXTURE_COUNT ];
 	uint8_t map_array_count = 0;
 	if( mat_props & ASSET_FILE_MODEL_MATERIAL_BIT_ALBEDO_MAP )
 		{
+		std::string strip_file_extension = texture_str_names[ map_array_count ];
+		strip_file_extension = strip_file_extension.substr( 0, strip_file_extension.find_first_of( '.' ) );
+		texture_str_names[ map_array_count ] = strip_file_extension;
+
+		name_array[ map_array_count ] = texture_str_names[ map_array_count ].c_str();
 		map_array[ map_array_count++ ] = diffuse_map_asset_id;
 		}
 
-	if( !AssetFile_WriteModelMaterialTextureMaps( map_array, map_array_count, output ) )
+	if( !AssetFile_WriteModelMaterialTextureMaps( map_array, name_array, map_array_count, output ) )
 		{
 		print_error( "ExportModel_Export() failed to write the texture maps for a material, for model (%s).", filename );
 		}
@@ -272,6 +306,11 @@ std::unordered_map<uint32_t, uint32_t> map_mesh_index_to_element_index;
 for( unsigned int i = 0; i < scene->mNumMeshes; i++ )
 	{
 	aiMesh *mesh = scene->mMeshes[ i ];
+	std::string mesh_name = strip_filename( filename );
+	mesh_name = mesh_name.substr( 0, mesh_name.find_first_of( '.' ) ) + std::string( "/" ) + std::string( mesh->mName.C_Str() );
+
+	std::string mesh_hash_name = std::string( "msh/" ) + mesh_name;
+	AssetFileAssetId mesh_id = AssetFile_MakeAssetIdFromName2( mesh_hash_name.c_str() );
 
 	uint32_t index_count = 0;
 	for( unsigned int j = 0; j < mesh->mNumFaces; j++ )
@@ -279,8 +318,22 @@ for( unsigned int i = 0; i < scene->mNumMeshes; i++ )
 		index_count += (uint32_t)mesh->mFaces[ j ].mNumIndices;
 		}
 
+	aiAABB abb = mesh->mAABB;
+	aiVector3D half_extent = 0.5f * ( abb.mMax - abb.mMin );
+	aiVector3D center = abb.mMin + half_extent;
+
+	f32 abb_center[ 3 ];
+	abb_center[ 0 ] = center.x;
+	abb_center[ 1 ] = center.y;
+	abb_center[ 2 ] = center.z;
+
+	f32 abb_half_extents[ 3 ];
+	abb_half_extents[ 0 ] = half_extent.x;
+	abb_half_extents[ 1 ] = half_extent.y;
+	abb_half_extents[ 2 ] = half_extent.z;
+
 	if( !AssetFile_BeginWritingModelElement( ASSET_FILE_MODEL_ELEMENT_KIND_MESH, element_count, output )
-	 || !AssetFile_DescribeModelMesh( map_material_index_to_element_index[ mesh->mMaterialIndex ], (uint32_t)mesh->mNumVertices, index_count, output ) )
+	 || !AssetFile_DescribeModelMesh( map_material_index_to_element_index[ mesh->mMaterialIndex ], (uint32_t)mesh->mNumVertices, index_count, abb_center, abb_half_extents, mesh_id, mesh_name.c_str(), output ) )
 		{
 		print_error( "ExportModel_Export() could not start writing new model mesh element (%s).", filename );
 		return( false );
@@ -292,12 +345,19 @@ for( unsigned int i = 0; i < scene->mNumMeshes; i++ )
 		AssetFileModelVertex v = {};
 		v.x = mesh->mVertices[ j ].x;
 		v.y = mesh->mVertices[ j ].y;
-		v.z = mesh->mVertices[ j ].z;
+		v.z = -mesh->mVertices[ j ].z;
 
 		if( mesh->mTextureCoords[ 0 ] )
 			{
 			v.u0 = mesh->mTextureCoords[ 0 ][ j ].x;
 			v.v0 = mesh->mTextureCoords[ 0 ][ j ].y;
+			}
+
+		if( mesh->mNormals )
+			{
+			v.nx = mesh->mNormals[ j ].x;
+			v.ny = mesh->mNormals[ j ].y;
+			v.nz = -mesh->mNormals[ j ].z;
 			}
 
 		AssetFile_WriteModelMeshVertex( &v, output );
@@ -347,6 +407,47 @@ return( true );
 
 /*******************************************************************
 *
+*   ExportModel_GetTextures()
+*
+*   DESCRIPTION:
+*       Get all the texture filenames in the given model.
+*
+*******************************************************************/
+
+bool ExportModel_GetTextures( const char *filename, std::vector<std::string> &texture_names )
+{
+Assimp::Importer importer;
+const aiScene *scene = importer.ReadFile( std::string( filename ), IMPORT_FLAGS );
+if( !scene )
+    {
+	print_error( "ExportModel_GetTextures() unable to read textures (%s).", filename );
+    return( false );
+    }
+
+for( unsigned int i = 0; i < scene->mNumMaterials; i++ )
+	{
+	const aiMaterial *material = scene->mMaterials[ i ];
+	if( material->GetTextureCount( aiTextureType_BASE_COLOR ) > 0 )
+		{
+		/* albedo */
+		aiString diffuse_filename;
+		if( material->GetTexture( aiTextureType_BASE_COLOR, 0, &diffuse_filename ) != aiReturn_SUCCESS )
+			{
+			print_error( "ExportModel_Export() unable to find diffuse texture (%s).", diffuse_filename.C_Str() );
+			return( false );
+			}
+
+	    texture_names.push_back( std::string( diffuse_filename.C_Str() ) );
+        }
+    }
+
+return( true );
+
+} /* ExportModel_GetTextures() */
+
+
+/*******************************************************************
+*
 *   ParseNode()
 *
 *   DESCRIPTION:
@@ -354,30 +455,21 @@ return( true );
 *
 *******************************************************************/
 
-static uint32_t ParseNode( const aiNode *node, const LocalMatrix4x4 *transform, LocalNode *parent )
+static uint32_t ParseNode( const aiNode *node, LocalNode *parent )
 {
-uint32_t ret = 0;
-LocalNode *use_parent = parent;
-LocalMatrix4x4 use_transform;
-LocalMatrix4x4 local_matrix;
-LoadMatrix( &node->mTransformation, local_matrix.a );
-Multiply4x4( local_matrix.a, transform->a, use_transform.a );
+aiVector3D scale;
+aiQuaternion rotation;
+aiVector3D translation;
+node->mTransformation.Decompose( scale, rotation, translation );
 
-if( node->mNumMeshes > 0 )
-	{
-	parent->children.emplace_back();
-	ret += 1;
+LocalNode &local = parent->children.emplace_back();
+local.node = node;
+LoadTransform( &local );
 
-	use_parent = &parent->children.back();
-	use_parent->node = node;
-	use_parent->transform = local_matrix;
-
-	use_transform = IDENTITY_4x4;
-	}
-
+uint32_t ret = 1;
 for( unsigned int i = 0; i < node->mNumChildren; i++ )
 	{
-	ret += ParseNode( node->mChildren[ i ], &use_transform, use_parent );
+	ret += ParseNode( node->mChildren[ i ], &local);
 	}
 
 return( ret );
